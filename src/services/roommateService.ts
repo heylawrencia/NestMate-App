@@ -1,5 +1,6 @@
-import { AllocationResult, RoommateCandidate, RoommateGroupMember } from '../types/roommate';
+import { AllocationResult, CandidateGender, RoommateCandidate, RoommateGroupMember } from '../types/roommate';
 import { CURRENT_ACADEMIC_YEAR } from './hostelService';
+import { fetchProfile } from './profileService';
 
 const MOCK_NETWORK_DELAY_MS = 500;
 const ALLOCATION_PROCESSING_MS = 4000;
@@ -21,34 +22,52 @@ const GENERIC_CANDIDATE_POOL: RoommateCandidate[] = [
   {
     id: 'cand-nana',
     name: 'Nana Yeboah',
+    gender: 'male',
     matchPercent: 88,
     program: 'Business Admin',
     level: 'Level 200',
     traits: ['Night Owl', 'Social', 'Pet Friendly'],
+    bio: "I love meeting new people and I'm pretty easygoing about noise and guests — just give me a heads up before bringing a pet over.",
   },
   {
     id: 'cand-kojo',
     name: 'Kojo Antwi',
+    gender: 'male',
     matchPercent: 79,
     program: 'Mechanical Eng.',
     level: 'Level 300',
     traits: ['Quiet', 'Tidy'],
+    bio: 'I keep to myself most days — a quiet study environment and a tidy room matter a lot to me.',
   },
   {
     id: 'cand-akosua',
     name: 'Akosua Boateng',
+    gender: 'female',
     matchPercent: 90,
     program: 'Nursing',
     level: 'Level 100',
     traits: ['Very Clean', 'Early Bird', 'Non-smoker'],
+    bio: "Cleanliness is non-negotiable for me and I don't smoke — hoping to match with roommates who feel the same.",
   },
   {
     id: 'cand-yaw',
     name: 'Yaw Darko',
+    gender: 'male',
     matchPercent: 82,
     program: 'Economics',
     level: 'Level 400',
     traits: ['Social', 'Guests OK'],
+    bio: 'Social and love having friends over on weekends, but always respectful of shared space.',
+  },
+  {
+    id: 'cand-adjoa',
+    name: 'Adjoa Owusu',
+    gender: 'female',
+    matchPercent: 85,
+    program: 'Nursing',
+    level: 'Level 200',
+    traits: ['Social', 'Early Bird', 'Guests OK'],
+    bio: "I'm an early riser who likes a lively room — happy to host friends occasionally as long as we keep things tidy.",
   },
 ];
 
@@ -63,10 +82,12 @@ function seedState(hostelId: string, roomTypeId: string): GroupState {
         {
           id: 'ama-mensah',
           name: 'Ama Mensah',
+          gender: 'female',
           matchPercent: 96,
           program: 'Computer Science',
           level: 'Level 300',
           traits: ['Very Clean', 'Early Bird', 'Non-smoker'],
+          bio: "I keep my space spotless and I'm usually in bed by 10pm — looking for roommates who value a calm, tidy room.",
         },
         ...GENERIC_CANDIDATE_POOL,
       ],
@@ -87,12 +108,39 @@ function getState(hostelId: string, roomTypeId: string): GroupState {
   return groupStates.get(key)!;
 }
 
-export async function fetchNextCandidate(
+function normalizeGender(profileGender?: string): CandidateGender | undefined {
+  if (profileGender === 'Female') return 'female';
+  if (profileGender === 'Male') return 'male';
+  return undefined;
+}
+
+async function currentUserGender(): Promise<CandidateGender | undefined> {
+  const profile = await fetchProfile();
+  return normalizeGender(profile.gender);
+}
+
+export async function fetchCandidates(
   hostelId: string,
   roomTypeId: string,
+): Promise<RoommateCandidate[]> {
+  const gender = await currentUserGender();
+  const candidates = getState(hostelId, roomTypeId).candidateQueue;
+  const matching = gender ? candidates.filter((item) => item.gender === gender) : candidates;
+  return delay([...matching]);
+}
+
+export async function fetchCandidateById(
+  hostelId: string,
+  roomTypeId: string,
+  candidateId: string,
 ): Promise<RoommateCandidate | null> {
+  const gender = await currentUserGender();
   const state = getState(hostelId, roomTypeId);
-  return delay(state.candidateQueue[0] ?? null);
+  const candidate = state.candidateQueue.find((item) => item.id === candidateId);
+  if (candidate && gender && candidate.gender !== gender) {
+    return delay(null);
+  }
+  return delay(candidate ?? null);
 }
 
 export async function respondToCandidate(

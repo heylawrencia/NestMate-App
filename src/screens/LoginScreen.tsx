@@ -83,7 +83,12 @@ export default function LoginScreen({ navigation }: Props) {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
-          <ScreenHeader title="Log In" onBack={() => navigation.goBack()} />
+          <ScreenHeader
+            title="Log In"
+            onBack={() =>
+              navigation.canGoBack() ? navigation.goBack() : navigation.replace('GetStarted')
+            }
+          />
 
           <View style={styles.form}>
             <AppTextInput

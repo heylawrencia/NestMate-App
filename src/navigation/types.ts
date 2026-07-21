@@ -58,6 +58,7 @@ export type ExploreStackParamList = {
   ChooseRoomType: { hostelId: string };
   FindRoommates: { hostelId: string; roomTypeId: string };
   RoommateMatching: { hostelId: string; roomTypeId: string };
+  RoommateProfile: { hostelId: string; roomTypeId: string; candidateId: string };
   RoommateGroup: { hostelId: string; roomTypeId: string };
   Allocation: { hostelId: string; roomTypeId: string };
 };

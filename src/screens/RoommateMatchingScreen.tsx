@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CompositeScreenProps, useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -11,15 +11,17 @@ import ElevatedCard from '../components/ElevatedCard';
 import EmptyState from '../components/EmptyState';
 import GradientHeader from '../components/GradientHeader';
 import HeaderIconRow from '../components/HeaderIconRow';
+import IconCircle from '../components/IconCircle';
 import { colors, spacing, typography } from '../theme';
 import { ExploreStackParamList, RootStackParamList } from '../navigation/types';
 import { useAsyncData } from '../hooks/useAsyncData';
 import { fetchHostelById, getRoomType } from '../services/hostelService';
 import {
-  fetchNextCandidate,
+  fetchCandidates,
   fetchRoommateGroupMembers,
   respondToCandidate,
 } from '../services/roommateService';
+import { RoommateCandidate } from '../types/roommate';
 import { useDrawer } from '../context/DrawerContext';
 
 type Props = CompositeScreenProps<
@@ -32,21 +34,24 @@ export default function RoommateMatchingScreen({ navigation, route }: Props) {
   const { data: hostel } = useAsyncData(() => fetchHostelById(hostelId), [hostelId]);
   const roomType = hostel ? getRoomType(hostel, roomTypeId) : undefined;
   const roommatesNeeded = roomType ? roomType.capacity - 1 : 0;
+  const isListMode = roommatesNeeded >= 2;
   const { openDrawer } = useDrawer();
 
   const {
-    data: candidate,
+    data: candidates,
     loading,
     error,
     reload,
-  } = useAsyncData(() => fetchNextCandidate(hostelId, roomTypeId), [hostelId, roomTypeId]);
+  } = useAsyncData(() => fetchCandidates(hostelId, roomTypeId), [hostelId, roomTypeId]);
   const { data: members, reload: reloadMembers } = useAsyncData(
     () => fetchRoommateGroupMembers(hostelId, roomTypeId),
     [hostelId, roomTypeId],
   );
   const [responding, setResponding] = useState(false);
 
+  const candidate = candidates?.[0] ?? null;
   const isGroupComplete = roommatesNeeded > 0 && (members?.length ?? 0) >= roommatesNeeded;
+  const noMoreCandidates = isListMode ? (candidates?.length ?? 0) === 0 : !candidate;
 
   useFocusEffect(
     useCallback(() => {
@@ -55,15 +60,63 @@ export default function RoommateMatchingScreen({ navigation, route }: Props) {
     }, [reload, reloadMembers]),
   );
 
-  async function handleRespond(liked: boolean) {
-    if (!candidate || responding) {
+  async function handleRespond(candidateId: string, liked: boolean) {
+    if (responding) {
       return;
     }
     setResponding(true);
-    await respondToCandidate(hostelId, roomTypeId, candidate.id, liked);
+    await respondToCandidate(hostelId, roomTypeId, candidateId, liked);
     setResponding(false);
     reload();
     reloadMembers();
+  }
+
+  function renderCandidateRow(item: RoommateCandidate) {
+    return (
+      <View key={item.id} style={styles.listRow}>
+        <TouchableOpacity
+          style={styles.listMain}
+          activeOpacity={0.7}
+          onPress={() =>
+            navigation.navigate('RoommateProfile', { hostelId, roomTypeId, candidateId: item.id })
+          }
+        >
+          <IconCircle size={48} backgroundColor={colors.primaryLight}>
+            <Text style={styles.listInitial}>{item.name.charAt(0).toUpperCase()}</Text>
+          </IconCircle>
+          <View style={styles.listTextGroup}>
+            <View style={styles.listNameRow}>
+              <Text style={styles.listName}>{item.name}</Text>
+              <Badge label={`${item.matchPercent}%`} tone="success" />
+            </View>
+            <Text style={styles.listMeta}>
+              {item.program} · {item.level}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        <View style={styles.listActions}>
+          <TouchableOpacity
+            style={[styles.listActionButton, styles.listActionMuted]}
+            onPress={() => handleRespond(item.id, false)}
+            disabled={responding}
+            accessibilityLabel={`Pass on ${item.name}`}
+            accessibilityRole="button"
+          >
+            <Ionicons name="close" size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.listActionButton, styles.listActionPrimary]}
+            onPress={() => handleRespond(item.id, true)}
+            disabled={responding}
+            accessibilityLabel={`Like ${item.name}`}
+            accessibilityRole="button"
+          >
+            <Ionicons name="heart" size={18} color={colors.white} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
   }
 
   return (
@@ -88,6 +141,23 @@ export default function RoommateMatchingScreen({ navigation, route }: Props) {
               title="Your group is complete"
               description="You've found all the roommates you need for this room type."
             />
+          ) : isListMode ? (
+            candidates && candidates.length > 0 ? (
+              <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+                <Text style={styles.listSubtitle}>
+                  Tap a student to view their profile, or like/pass right from the list
+                </Text>
+                <ElevatedCard style={styles.listCard}>
+                  {candidates.map(renderCandidateRow)}
+                </ElevatedCard>
+              </ScrollView>
+            ) : (
+              <EmptyState
+                icon="checkmark-done-circle-outline"
+                title="No more students to match"
+                description="You've gone through everyone matching right now. Check your group to see who you've matched with."
+              />
+            )
           ) : candidate ? (
             <View style={styles.content}>
               <ElevatedCard style={styles.card}>
@@ -115,7 +185,7 @@ export default function RoommateMatchingScreen({ navigation, route }: Props) {
                 <View style={styles.actionsRow}>
                   <TouchableOpacity
                     style={[styles.actionButton, styles.actionButtonMuted]}
-                    onPress={() => handleRespond(false)}
+                    onPress={() => handleRespond(candidate.id, false)}
                     disabled={responding}
                     accessibilityLabel="Pass"
                     accessibilityRole="button"
@@ -139,7 +209,7 @@ export default function RoommateMatchingScreen({ navigation, route }: Props) {
 
                   <TouchableOpacity
                     style={[styles.actionButton, styles.actionButtonPrimary]}
-                    onPress={() => handleRespond(true)}
+                    onPress={() => handleRespond(candidate.id, true)}
                     disabled={responding}
                     accessibilityLabel="Like"
                     accessibilityRole="button"
@@ -158,7 +228,7 @@ export default function RoommateMatchingScreen({ navigation, route }: Props) {
           )}
         </AsyncBoundary>
 
-        {isGroupComplete || (!candidate && !loading) ? (
+        {isGroupComplete || (noMoreCandidates && !loading) ? (
           <View style={styles.viewGroupWrapper}>
             <TouchableOpacity
               style={styles.viewGroupButton}
@@ -263,6 +333,77 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   actionButtonPrimary: {
+    backgroundColor: colors.text,
+  },
+  listContent: {
+    flexGrow: 1,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
+  },
+  listSubtitle: {
+    fontSize: typography.caption,
+    color: colors.textMuted,
+    marginBottom: spacing.md,
+  },
+  listCard: {
+    padding: spacing.sm,
+  },
+  listRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  listMain: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  listInitial: {
+    fontSize: typography.body,
+    fontWeight: typography.weightBold,
+    color: colors.primary,
+  },
+  listTextGroup: {
+    flex: 1,
+  },
+  listNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 2,
+  },
+  listName: {
+    fontSize: typography.body,
+    fontWeight: typography.weightBold,
+    color: colors.text,
+    flexShrink: 1,
+    marginRight: spacing.sm,
+  },
+  listMeta: {
+    fontSize: typography.caption,
+    color: colors.textMuted,
+  },
+  listActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  listActionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  listActionMuted: {
+    backgroundColor: colors.surface,
+  },
+  listActionPrimary: {
     backgroundColor: colors.text,
   },
   viewGroupWrapper: {

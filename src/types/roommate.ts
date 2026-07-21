@@ -1,12 +1,16 @@
 export type RoommateMemberStatus = 'matched' | 'friend';
 
+export type CandidateGender = 'female' | 'male';
+
 export interface RoommateCandidate {
   id: string;
   name: string;
+  gender: CandidateGender;
   matchPercent: number;
   program: string;
   level: string;
   traits: string[];
+  bio?: string;
   avatarUri?: string;
 }
 

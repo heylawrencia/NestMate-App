@@ -26,7 +26,12 @@ export default function HeaderIconRow({ onMenuPress, onNotificationsPress, onBac
             <Ionicons name="arrow-back" size={24} color={colors.white} />
           </TouchableOpacity>
         ) : null}
-        <TouchableOpacity onPress={onMenuPress} hitSlop={HIT_SLOP}>
+        <TouchableOpacity
+          onPress={onMenuPress}
+          hitSlop={HIT_SLOP}
+          accessibilityLabel="Menu"
+          accessibilityRole="button"
+        >
           <Ionicons name="menu" size={26} color={colors.white} />
         </TouchableOpacity>
       </View>

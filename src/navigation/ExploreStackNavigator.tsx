@@ -9,6 +9,7 @@ import CodeVerifiedScreen from '../screens/CodeVerifiedScreen';
 import ChooseRoomTypeScreen from '../screens/ChooseRoomTypeScreen';
 import FindRoommatesScreen from '../screens/FindRoommatesScreen';
 import RoommateMatchingScreen from '../screens/RoommateMatchingScreen';
+import RoommateProfileScreen from '../screens/RoommateProfileScreen';
 import RoommateGroupScreen from '../screens/RoommateGroupScreen';
 import AllocationScreen from '../screens/AllocationScreen';
 
@@ -24,6 +25,7 @@ export default function ExploreStackNavigator() {
       <Stack.Screen name="ChooseRoomType" component={ChooseRoomTypeScreen} />
       <Stack.Screen name="FindRoommates" component={FindRoommatesScreen} />
       <Stack.Screen name="RoommateMatching" component={RoommateMatchingScreen} />
+      <Stack.Screen name="RoommateProfile" component={RoommateProfileScreen} />
       <Stack.Screen name="RoommateGroup" component={RoommateGroupScreen} />
       <Stack.Screen name="Allocation" component={AllocationScreen} />
     </Stack.Navigator>
