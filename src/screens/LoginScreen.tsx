@@ -18,6 +18,7 @@ import ScreenHeader from '../components/ScreenHeader';
 import { colors, spacing, typography } from '../theme';
 import { RootStackParamList } from '../navigation/types';
 import * as authService from '../services/authService';
+import { updateProfile } from '../services/profileService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
@@ -67,6 +68,7 @@ export default function LoginScreen({ navigation }: Props) {
     setLoading(false);
 
     if (result.success) {
+      await updateProfile({ email: email.trim() });
       navigation.reset({ index: 0, routes: [{ name: 'Home', params: { email: email.trim() } }] });
     } else {
       setFormError(result.errorMessage ?? 'Something went wrong. Please try again.');

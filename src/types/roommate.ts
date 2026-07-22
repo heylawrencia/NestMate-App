@@ -21,6 +21,15 @@ export interface RoommateGroupMember {
   matchPercent?: number;
   friendCode?: string;
   avatarUri?: string;
+  program?: string;
+  level?: string;
+  traits?: string[];
+  bio?: string;
+}
+
+export interface RoommateGroupSuggestion {
+  id: string;
+  members: RoommateCandidate[];
 }
 
 export type AllocationStatus = 'pending' | 'assigned';

@@ -16,18 +16,14 @@ export default function SettingsScreen({ navigation }: Props) {
       <ScreenHeader title="Settings" onBack={() => navigation.goBack()} />
 
       <ElevatedCard style={styles.card}>
-        <ListRow label="Account" onPress={() => navigation.navigate('Placeholder', { title: 'Account' })} />
-        <ListRow label="Privacy" onPress={() => navigation.navigate('Placeholder', { title: 'Privacy' })} />
+        <ListRow label="Account" onPress={() => navigation.navigate('Account')} />
+        <ListRow label="Privacy" onPress={() => navigation.navigate('Privacy')} />
         <ListRow
           label="Notifications"
           onPress={() => navigation.navigate('Placeholder', { title: 'Notifications' })}
         />
         <ListRow label="Help & Support" onPress={() => navigation.navigate('HelpSupport')} />
-        <ListRow
-          label="About NestMate"
-          isLast
-          onPress={() => navigation.navigate('Placeholder', { title: 'About NestMate' })}
-        />
+        <ListRow label="About NestMate" isLast onPress={() => navigation.navigate('About')} />
       </ElevatedCard>
 
       <ElevatedCard style={styles.card}>

@@ -17,10 +17,16 @@ import MainTabNavigator from './MainTabNavigator';
 import MyHostelScreen from '../screens/MyHostelScreen';
 import VerificationScreen from '../screens/VerificationScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import AccountScreen from '../screens/AccountScreen';
+import PrivacyScreen from '../screens/PrivacyScreen';
+import AboutScreen from '../screens/AboutScreen';
 import HelpSupportScreen from '../screens/HelpSupportScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import PlaceholderScreen from '../screens/PlaceholderScreen';
+import MatchProfileScreen from '../screens/MatchProfileScreen';
+import IndividualChatScreen from '../screens/IndividualChatScreen';
+import GroupChatScreen from '../screens/GroupChatScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -42,10 +48,16 @@ export default function RootNavigator() {
       <Stack.Screen name="MyHostel" component={MyHostelScreen} />
       <Stack.Screen name="Verification" component={VerificationScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen name="Account" component={AccountScreen} />
+      <Stack.Screen name="Privacy" component={PrivacyScreen} />
+      <Stack.Screen name="About" component={AboutScreen} />
       <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="Placeholder" component={PlaceholderScreen} />
+      <Stack.Screen name="MatchProfile" component={MatchProfileScreen} />
+      <Stack.Screen name="IndividualChat" component={IndividualChatScreen} />
+      <Stack.Screen name="GroupChat" component={GroupChatScreen} />
     </Stack.Navigator>
   );
 }

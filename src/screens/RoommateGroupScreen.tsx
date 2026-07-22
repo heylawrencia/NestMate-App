@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CompositeScreenProps, useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -100,6 +100,17 @@ export default function RoommateGroupScreen({ navigation, route }: Props) {
                 {members.map(renderMember)}
               </ElevatedCard>
 
+              {members.length > 0 ? (
+                <TouchableOpacity
+                  style={styles.groupChatRow}
+                  onPress={() => navigation.navigate('GroupChat', { hostelId, roomTypeId })}
+                >
+                  <Ionicons name="chatbubbles-outline" size={18} color={colors.text} />
+                  <Text style={styles.groupChatText}>Group chat with your roommates</Text>
+                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+                </TouchableOpacity>
+              ) : null}
+
               <Text style={styles.infoText}>
                 {isComplete
                   ? `All members confirmed. Submitting sends your group to ${hostel.shortName} management for room allocation.`
@@ -180,6 +191,24 @@ const styles = StyleSheet.create({
   },
   memberStatusFriend: {
     color: colors.textMuted,
+  },
+  groupChatRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    backgroundColor: colors.background,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  groupChatText: {
+    flex: 1,
+    fontSize: typography.body,
+    fontWeight: typography.weightMedium,
+    color: colors.text,
   },
   infoText: {
     fontSize: typography.caption,

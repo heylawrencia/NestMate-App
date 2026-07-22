@@ -43,29 +43,23 @@ export default function ChooseRoomTypeScreen({ navigation, route }: Props) {
       <SelectableCard
         key={roomType.id}
         selected={isSelected}
-        disabled={isFull}
         onPress={() => setSelectedRoomTypeId(roomType.id)}
       >
         <View style={styles.roomTypeRow}>
           <View style={styles.roomTypeTextGroup}>
-            <Text style={[styles.roomTypeLabel, isFull && styles.roomTypeLabelDisabled]}>
-              {roomType.label}
-            </Text>
+            <Text style={styles.roomTypeLabel}>{roomType.label}</Text>
             <Text style={styles.roomTypeMeta}>
+              GHS {roomType.pricePerYear.toLocaleString()}/yr
               {isFull
-                ? 'Full this year'
-                : `GHS ${roomType.pricePerYear.toLocaleString()}/yr${
-                    roomType.studentsMatching
-                      ? ` · ${roomType.studentsMatching} students matching`
-                      : ''
-                  }`}
+                ? ' · Full — join the waitlist'
+                : roomType.studentsMatching
+                ? ` · ${roomType.studentsMatching} students matching`
+                : ''}
             </Text>
           </View>
-          {!isFull ? (
-            <View style={[styles.radio, isSelected && styles.radioSelected]}>
-              {isSelected ? <View style={styles.radioDot} /> : null}
-            </View>
-          ) : null}
+          <View style={[styles.radio, isSelected && styles.radioSelected]}>
+            {isSelected ? <View style={styles.radioDot} /> : null}
+          </View>
         </View>
       </SelectableCard>
     );
@@ -171,9 +165,6 @@ const styles = StyleSheet.create({
     fontWeight: typography.weightBold,
     color: colors.text,
     marginBottom: 2,
-  },
-  roomTypeLabelDisabled: {
-    color: colors.textMuted,
   },
   roomTypeMeta: {
     fontSize: typography.caption,

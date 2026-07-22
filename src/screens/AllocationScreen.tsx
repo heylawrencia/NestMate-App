@@ -84,12 +84,7 @@ export default function AllocationScreen({ navigation, route }: Props) {
 
               <TouchableOpacity
                 style={styles.actionRow}
-                onPress={() =>
-                  navigation.navigate('Placeholder', {
-                    title: 'Room Chat',
-                    description: 'Group chat with your roommates is coming soon.',
-                  })
-                }
+                onPress={() => navigation.navigate('GroupChat', { hostelId, roomTypeId })}
               >
                 <Ionicons name="chatbubbles-outline" size={18} color={colors.text} />
                 <Text style={styles.actionText}>Room chat</Text>

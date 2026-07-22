@@ -1,4 +1,10 @@
-import { AllocationResult, CandidateGender, RoommateCandidate, RoommateGroupMember } from '../types/roommate';
+import {
+  AllocationResult,
+  CandidateGender,
+  RoommateCandidate,
+  RoommateGroupMember,
+  RoommateGroupSuggestion,
+} from '../types/roommate';
 import { CURRENT_ACADEMIC_YEAR } from './hostelService';
 import { fetchProfile } from './profileService';
 
@@ -119,6 +125,51 @@ async function currentUserGender(): Promise<CandidateGender | undefined> {
   return normalizeGender(profile.gender);
 }
 
+function toMatchedMember(candidate: RoommateCandidate): RoommateGroupMember {
+  return {
+    id: candidate.id,
+    name: candidate.name,
+    status: 'matched',
+    matchPercent: candidate.matchPercent,
+    program: candidate.program,
+    level: candidate.level,
+    traits: candidate.traits,
+    bio: candidate.bio,
+  };
+}
+
+/**
+ * Flattens matched roommates across every hostel/room-type group the user
+ * has swiped in during this session (`respondToCandidate(..., true)` is what
+ * populates a group's members), de-duping by candidate id since the same
+ * candidate can appear in more than one room-type's pool.
+ */
+export async function fetchAllMatches(): Promise<RoommateGroupMember[]> {
+  const seen = new Set<string>();
+  const matches: RoommateGroupMember[] = [];
+
+  for (const state of groupStates.values()) {
+    for (const member of state.members) {
+      if (member.status === 'matched' && !seen.has(member.id)) {
+        seen.add(member.id);
+        matches.push(member);
+      }
+    }
+  }
+
+  return delay(matches);
+}
+
+export async function fetchTopMatches(limit = 3): Promise<RoommateGroupMember[]> {
+  const matches = await fetchAllMatches();
+  return [...matches].sort((a, b) => (b.matchPercent ?? 0) - (a.matchPercent ?? 0)).slice(0, limit);
+}
+
+export async function fetchMatchById(matchId: string): Promise<RoommateGroupMember | null> {
+  const matches = await fetchAllMatches();
+  return matches.find((member) => member.id === matchId) ?? null;
+}
+
 export async function fetchCandidates(
   hostelId: string,
   roomTypeId: string,
@@ -154,15 +205,55 @@ export async function respondToCandidate(
   state.candidateQueue = state.candidateQueue.filter((item) => item.id !== candidateId);
 
   if (liked && candidate) {
-    state.members = [
-      ...state.members,
-      {
-        id: candidate.id,
-        name: candidate.name,
-        status: 'matched',
-        matchPercent: candidate.matchPercent,
-      },
-    ];
+    state.members = [...state.members, toMatchedMember(candidate)];
+  }
+
+  return delay({ success: true });
+}
+
+/**
+ * Chunks the remaining candidate pool into ready-made roommate groups sized
+ * to fill the room (`groupSize`), so the user reviews and accepts/rejects a
+ * whole prospective group at once instead of swiping on individuals one by
+ * one. Leftover candidates that don't fill a complete group are held back
+ * rather than surfaced as a partial group.
+ */
+export async function fetchGroupSuggestions(
+  hostelId: string,
+  roomTypeId: string,
+  groupSize: number,
+): Promise<RoommateGroupSuggestion[]> {
+  if (groupSize <= 0) {
+    return delay([]);
+  }
+
+  const gender = await currentUserGender();
+  const candidates = getState(hostelId, roomTypeId).candidateQueue;
+  const pool = gender ? candidates.filter((item) => item.gender === gender) : candidates;
+
+  const groups: RoommateGroupSuggestion[] = [];
+  for (let i = 0; i + groupSize <= pool.length; i += groupSize) {
+    const members = pool.slice(i, i + groupSize);
+    groups.push({ id: members.map((member) => member.id).join(','), members });
+  }
+
+  return delay(groups);
+}
+
+export async function respondToGroup(
+  hostelId: string,
+  roomTypeId: string,
+  groupId: string,
+  liked: boolean,
+): Promise<{ success: boolean }> {
+  const state = getState(hostelId, roomTypeId);
+  const memberIds = new Set(groupId.split(','));
+  const groupCandidates = state.candidateQueue.filter((item) => memberIds.has(item.id));
+
+  state.candidateQueue = state.candidateQueue.filter((item) => !memberIds.has(item.id));
+
+  if (liked) {
+    state.members = [...state.members, ...groupCandidates.map(toMatchedMember)];
   }
 
   return delay({ success: true });

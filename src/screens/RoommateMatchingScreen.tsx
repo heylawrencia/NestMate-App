@@ -18,10 +18,12 @@ import { useAsyncData } from '../hooks/useAsyncData';
 import { fetchHostelById, getRoomType } from '../services/hostelService';
 import {
   fetchCandidates,
+  fetchGroupSuggestions,
   fetchRoommateGroupMembers,
   respondToCandidate,
+  respondToGroup,
 } from '../services/roommateService';
-import { RoommateCandidate } from '../types/roommate';
+import { RoommateGroupSuggestion } from '../types/roommate';
 import { useDrawer } from '../context/DrawerContext';
 
 type Props = CompositeScreenProps<
@@ -34,15 +36,24 @@ export default function RoommateMatchingScreen({ navigation, route }: Props) {
   const { data: hostel } = useAsyncData(() => fetchHostelById(hostelId), [hostelId]);
   const roomType = hostel ? getRoomType(hostel, roomTypeId) : undefined;
   const roommatesNeeded = roomType ? roomType.capacity - 1 : 0;
-  const isListMode = roommatesNeeded >= 2;
+  const isGroupMode = roommatesNeeded >= 2;
   const { openDrawer } = useDrawer();
 
   const {
     data: candidates,
-    loading,
-    error,
-    reload,
+    loading: candidatesLoading,
+    error: candidatesError,
+    reload: reloadCandidates,
   } = useAsyncData(() => fetchCandidates(hostelId, roomTypeId), [hostelId, roomTypeId]);
+  const {
+    data: groupSuggestions,
+    loading: groupsLoading,
+    error: groupsError,
+    reload: reloadGroups,
+  } = useAsyncData(
+    () => fetchGroupSuggestions(hostelId, roomTypeId, roommatesNeeded),
+    [hostelId, roomTypeId, roommatesNeeded],
+  );
   const { data: members, reload: reloadMembers } = useAsyncData(
     () => fetchRoommateGroupMembers(hostelId, roomTypeId),
     [hostelId, roomTypeId],
@@ -50,14 +61,19 @@ export default function RoommateMatchingScreen({ navigation, route }: Props) {
   const [responding, setResponding] = useState(false);
 
   const candidate = candidates?.[0] ?? null;
+  const suggestedGroup = groupSuggestions?.[0] ?? null;
   const isGroupComplete = roommatesNeeded > 0 && (members?.length ?? 0) >= roommatesNeeded;
-  const noMoreCandidates = isListMode ? (candidates?.length ?? 0) === 0 : !candidate;
+  const loading = isGroupMode ? groupsLoading : candidatesLoading;
+  const error = isGroupMode ? groupsError : candidatesError;
+  const reload = isGroupMode ? reloadGroups : reloadCandidates;
+  const noMoreToReview = isGroupMode ? (groupSuggestions?.length ?? 0) === 0 : !candidate;
 
   useFocusEffect(
     useCallback(() => {
-      reload();
+      reloadCandidates();
+      reloadGroups();
       reloadMembers();
-    }, [reload, reloadMembers]),
+    }, [reloadCandidates, reloadGroups, reloadMembers]),
   );
 
   async function handleRespond(candidateId: string, liked: boolean) {
@@ -67,55 +83,75 @@ export default function RoommateMatchingScreen({ navigation, route }: Props) {
     setResponding(true);
     await respondToCandidate(hostelId, roomTypeId, candidateId, liked);
     setResponding(false);
-    reload();
+    reloadCandidates();
     reloadMembers();
   }
 
-  function renderCandidateRow(item: RoommateCandidate) {
-    return (
-      <View key={item.id} style={styles.listRow}>
-        <TouchableOpacity
-          style={styles.listMain}
-          activeOpacity={0.7}
-          onPress={() =>
-            navigation.navigate('RoommateProfile', { hostelId, roomTypeId, candidateId: item.id })
-          }
-        >
-          <IconCircle size={48} backgroundColor={colors.primaryLight}>
-            <Text style={styles.listInitial}>{item.name.charAt(0).toUpperCase()}</Text>
-          </IconCircle>
-          <View style={styles.listTextGroup}>
-            <View style={styles.listNameRow}>
-              <Text style={styles.listName}>{item.name}</Text>
-              <Badge label={`${item.matchPercent}%`} tone="success" />
-            </View>
-            <Text style={styles.listMeta}>
-              {item.program} · {item.level}
-            </Text>
-          </View>
-        </TouchableOpacity>
+  async function handleRespondToGroup(groupId: string, liked: boolean) {
+    if (responding) {
+      return;
+    }
+    setResponding(true);
+    await respondToGroup(hostelId, roomTypeId, groupId, liked);
+    setResponding(false);
+    reloadGroups();
+    reloadMembers();
+  }
 
-        <View style={styles.listActions}>
+  function renderGroupSuggestion(group: RoommateGroupSuggestion) {
+    return (
+      <ElevatedCard style={styles.card}>
+        <Text style={styles.groupHeading}>Suggested roommate group</Text>
+        <Text style={styles.groupSubheading}>
+          {group.members.length} student{group.members.length === 1 ? '' : 's'} · tap a name to view their profile
+        </Text>
+
+        {group.members.map((member) => (
           <TouchableOpacity
-            style={[styles.listActionButton, styles.listActionMuted]}
-            onPress={() => handleRespond(item.id, false)}
-            disabled={responding}
-            accessibilityLabel={`Pass on ${item.name}`}
-            accessibilityRole="button"
+            key={member.id}
+            style={styles.listRow}
+            activeOpacity={0.7}
+            onPress={() =>
+              navigation.navigate('RoommateProfile', { hostelId, roomTypeId, candidateId: member.id })
+            }
           >
-            <Ionicons name="close" size={18} color={colors.textMuted} />
+            <IconCircle size={44} backgroundColor={colors.primaryLight}>
+              <Text style={styles.listInitial}>{member.name.charAt(0).toUpperCase()}</Text>
+            </IconCircle>
+            <View style={styles.listTextGroup}>
+              <View style={styles.listNameRow}>
+                <Text style={styles.listName}>{member.name}</Text>
+                <Badge label={`${member.matchPercent}%`} tone="success" />
+              </View>
+              <Text style={styles.listMeta}>
+                {member.program} · {member.level}
+              </Text>
+            </View>
           </TouchableOpacity>
+        ))}
+
+        <View style={styles.actionsRow}>
           <TouchableOpacity
-            style={[styles.listActionButton, styles.listActionPrimary]}
-            onPress={() => handleRespond(item.id, true)}
+            style={[styles.actionButton, styles.actionButtonMuted]}
+            onPress={() => handleRespondToGroup(group.id, false)}
             disabled={responding}
-            accessibilityLabel={`Like ${item.name}`}
+            accessibilityLabel="Pass on this group"
             accessibilityRole="button"
           >
-            <Ionicons name="heart" size={18} color={colors.white} />
+            <Ionicons name="close" size={22} color={colors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionButton, styles.actionButtonPrimary]}
+            onPress={() => handleRespondToGroup(group.id, true)}
+            disabled={responding}
+            accessibilityLabel="Accept this group"
+            accessibilityRole="button"
+          >
+            <Ionicons name="heart" size={22} color={colors.white} />
           </TouchableOpacity>
         </View>
-      </View>
+      </ElevatedCard>
     );
   }
 
@@ -141,21 +177,19 @@ export default function RoommateMatchingScreen({ navigation, route }: Props) {
               title="Your group is complete"
               description="You've found all the roommates you need for this room type."
             />
-          ) : isListMode ? (
-            candidates && candidates.length > 0 ? (
+          ) : isGroupMode ? (
+            suggestedGroup ? (
               <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
                 <Text style={styles.listSubtitle}>
-                  Tap a student to view their profile, or like/pass right from the list
+                  Review this group and accept it if you'd like to room with all of them
                 </Text>
-                <ElevatedCard style={styles.listCard}>
-                  {candidates.map(renderCandidateRow)}
-                </ElevatedCard>
+                {renderGroupSuggestion(suggestedGroup)}
               </ScrollView>
             ) : (
               <EmptyState
                 icon="checkmark-done-circle-outline"
-                title="No more students to match"
-                description="You've gone through everyone matching right now. Check your group to see who you've matched with."
+                title="No more groups to review"
+                description="You've gone through every suggested group. Check your group to see who you've matched with."
               />
             )
           ) : candidate ? (
@@ -228,7 +262,7 @@ export default function RoommateMatchingScreen({ navigation, route }: Props) {
           )}
         </AsyncBoundary>
 
-        {isGroupComplete || (noMoreCandidates && !loading) ? (
+        {isGroupComplete || (noMoreToReview && !loading) ? (
           <View style={styles.viewGroupWrapper}>
             <TouchableOpacity
               style={styles.viewGroupButton}
@@ -346,23 +380,24 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginBottom: spacing.md,
   },
-  listCard: {
-    padding: spacing.sm,
+  groupHeading: {
+    fontSize: typography.body,
+    fontWeight: typography.weightBold,
+    color: colors.text,
+    marginBottom: 2,
+  },
+  groupSubheading: {
+    fontSize: typography.caption,
+    color: colors.textMuted,
+    marginBottom: spacing.sm,
   },
   listRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: spacing.md,
     paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.xs,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-  },
-  listMain: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
   },
   listInitial: {
     fontSize: typography.body,
@@ -388,23 +423,6 @@ const styles = StyleSheet.create({
   listMeta: {
     fontSize: typography.caption,
     color: colors.textMuted,
-  },
-  listActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  listActionButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  listActionMuted: {
-    backgroundColor: colors.surface,
-  },
-  listActionPrimary: {
-    backgroundColor: colors.text,
   },
   viewGroupWrapper: {
     paddingHorizontal: spacing.lg,

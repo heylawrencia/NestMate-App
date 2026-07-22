@@ -1,5 +1,6 @@
 export interface UserProfile {
   fullName: string;
+  email?: string;
   dateOfBirth?: string;
   bio?: string;
   gender?: string;

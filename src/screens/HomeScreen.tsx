@@ -1,19 +1,20 @@
-import React from 'react';
-import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback } from 'react';
+import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { CompositeScreenProps } from '@react-navigation/native';
+import { CompositeScreenProps, useFocusEffect } from '@react-navigation/native';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import AppButton from '../components/AppButton';
 import ElevatedCard from '../components/ElevatedCard';
 import GradientHeader from '../components/GradientHeader';
-import HeaderIconRow from '../components/HeaderIconRow';
 import IconCircle from '../components/IconCircle';
 import { colors, spacing, typography } from '../theme';
 import { MainTabParamList, RootStackParamList } from '../navigation/types';
 import { useAsyncData } from '../hooks/useAsyncData';
 import { fetchHousingStatus } from '../services/userService';
+import { fetchHostels } from '../services/hostelService';
+import { fetchTopMatches } from '../services/roommateService';
+import { RoommateGroupMember } from '../types/roommate';
 import { useDrawer } from '../context/DrawerContext';
 import { displayNameFor } from '../utils/formatName';
 
@@ -22,50 +23,195 @@ type Props = CompositeScreenProps<
   NativeStackScreenProps<RootStackParamList>
 >;
 
+const MATCH_AVATAR_TONES = [colors.primaryLight, '#E3F5EE', '#FCEEDC'];
+
+function initialsFor(name: string): string {
+  return name
+    .split(' ')
+    .map((part) => part.charAt(0))
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+}
+
 export default function HomeScreen({ navigation, route }: Props) {
   const { email, name } = route.params;
   const firstName = displayNameFor(email, name);
-  const { data: housingStatus, loading } = useAsyncData(fetchHousingStatus, []);
+  const { data: housingStatus, loading: housingLoading } = useAsyncData(fetchHousingStatus, []);
+  const { data: hostels, loading: hostelsLoading } = useAsyncData(() => fetchHostels(), []);
+  const { data: topMatches, loading: matchesLoading, reload: reloadTopMatches } = useAsyncData(
+    () => fetchTopMatches(3),
+    [],
+  );
   const { openDrawer } = useDrawer();
+
+  useFocusEffect(
+    useCallback(() => {
+      reloadTopMatches();
+    }, [reloadTopMatches]),
+  );
+
+  const minPrice = hostels?.length ? Math.min(...hostels.map((hostel) => hostel.fromPricePerYear)) : null;
+
+  const quickActions = [
+    {
+      key: 'explore',
+      label: 'Explore',
+      icon: 'compass-outline' as const,
+      color: colors.accent,
+      onPress: () => navigation.navigate('Explore'),
+    },
+    {
+      key: 'matches',
+      label: 'Matches',
+      icon: 'people-outline' as const,
+      color: colors.primary,
+      onPress: () => navigation.navigate('Matches'),
+    },
+    {
+      key: 'invites',
+      label: 'Invites',
+      icon: 'ticket-outline' as const,
+      color: colors.secondary,
+      onPress: () =>
+        navigation.navigate('Placeholder', {
+          title: 'Invites',
+          description: 'Room and roommate invites will show up here.',
+        }),
+    },
+  ];
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <GradientHeader>
-          <HeaderIconRow
-            onMenuPress={openDrawer}
-            onNotificationsPress={() => navigation.navigate('Notifications')}
-          />
+        <GradientHeader style={styles.gradientHeader}>
+          <View style={styles.headerRow}>
+            <TouchableOpacity onPress={openDrawer} accessibilityLabel="Open menu" accessibilityRole="button">
+              <IconCircle size={40} backgroundColor="rgba(255,255,255,0.2)">
+                <Text style={styles.avatarInitial}>{firstName.charAt(0).toUpperCase()}</Text>
+              </IconCircle>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Notifications')}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityLabel="Notifications"
+              accessibilityRole="button"
+            >
+              <Ionicons name="notifications-outline" size={24} color={colors.white} />
+            </TouchableOpacity>
+          </View>
           <Text style={styles.greeting}>Hello, {firstName} 👋</Text>
           <Text style={styles.subtitle}>Where will you live this year?</Text>
         </GradientHeader>
 
-        <View style={styles.content}>
-          <ElevatedCard style={styles.exploreCard}>
-            <IconCircle size={56} backgroundColor={colors.primaryLight}>
-              <Ionicons name="compass-outline" size={28} color={colors.primary} />
-            </IconCircle>
-            <Text style={styles.exploreCardTitle}>Explore hostels & apartments</Text>
-            <View style={styles.exploreButton}>
-              <AppButton title="Start exploring" onPress={() => navigation.navigate('Explore')} />
-            </View>
-          </ElevatedCard>
+        <TouchableOpacity
+          style={styles.searchCard}
+          activeOpacity={0.8}
+          onPress={() => navigation.navigate('Explore')}
+        >
+          <Ionicons name="search" size={18} color={colors.textMuted} />
+          <Text style={styles.searchPlaceholder}>Search hostels, areas, budget...</Text>
+        </TouchableOpacity>
 
-          <Text style={styles.sectionTitle}>Your status</Text>
-          <ElevatedCard style={styles.statusCard}>
-            {loading ? (
+        <View style={styles.content}>
+          <View style={styles.quickActionsRow}>
+            {quickActions.map((action) => (
+              <TouchableOpacity
+                key={action.key}
+                style={styles.quickActionTile}
+                activeOpacity={0.8}
+                onPress={action.onPress}
+              >
+                <Ionicons name={action.icon} size={26} color={action.color} />
+                <Text style={styles.quickActionLabel}>{action.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Top matches for you</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Matches')}>
+              <Text style={styles.seeAllLink}>See all</Text>
+            </TouchableOpacity>
+          </View>
+
+          {matchesLoading ? (
+            <ActivityIndicator color={colors.primary} style={styles.sectionLoader} />
+          ) : topMatches && topMatches.length > 0 ? (
+            <View style={styles.matchesRow}>
+              {topMatches.map((candidate: RoommateGroupMember, index: number) => (
+                <TouchableOpacity
+                  key={candidate.id}
+                  style={styles.matchCard}
+                  activeOpacity={0.7}
+                  onPress={() => navigation.navigate('MatchProfile', { matchId: candidate.id })}
+                >
+                  <IconCircle size={56} backgroundColor={MATCH_AVATAR_TONES[index % MATCH_AVATAR_TONES.length]}>
+                    <Text style={styles.matchInitials}>{initialsFor(candidate.name)}</Text>
+                  </IconCircle>
+                  <Text style={styles.matchName} numberOfLines={1}>
+                    {candidate.name.split(' ')[0]} {candidate.name.split(' ')[1]?.charAt(0)}.
+                  </Text>
+                  <Text
+                    style={[
+                      styles.matchPercent,
+                      { color: (candidate.matchPercent ?? 0) >= 85 ? colors.success : colors.accent },
+                    ]}
+                  >
+                    {candidate.matchPercent}% match
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <ElevatedCard style={styles.noMatchesCard}>
+              <Text style={styles.noMatchesText}>
+                No matches yet — head to Explore and start matching with roommates.
+              </Text>
+            </ElevatedCard>
+          )}
+
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Your room</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Explore')}>
+              <Text style={styles.seeAllLink}>Browse</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ElevatedCard style={styles.roomCard}>
+            {housingLoading || hostelsLoading ? (
               <ActivityIndicator color={colors.primary} />
             ) : (
-              <View style={styles.statusRow}>
-                <IconCircle size={40} backgroundColor={colors.primaryLight}>
-                  <Ionicons name="bed-outline" size={20} color={colors.primary} />
-                </IconCircle>
-                <Text style={styles.statusText}>
-                  {housingStatus?.hasRoom
-                    ? `Room ${housingStatus.roomNumber} at ${housingStatus.hostelName}`
-                    : 'No room yet — explore to get started'}
-                </Text>
-              </View>
+              <TouchableOpacity
+                style={styles.roomRow}
+                activeOpacity={0.8}
+                onPress={() => navigation.navigate('Explore')}
+              >
+                {housingStatus?.hasRoom ? (
+                  <IconCircle size={40} backgroundColor={colors.primaryLight}>
+                    <Ionicons name="bed-outline" size={20} color={colors.primary} />
+                  </IconCircle>
+                ) : (
+                  <Text style={styles.roomFlag}>🇬🇭</Text>
+                )}
+                <View style={styles.roomTextGroup}>
+                  {housingStatus?.hasRoom ? (
+                    <>
+                      <Text style={styles.roomTitle}>Room {housingStatus.roomNumber}</Text>
+                      <Text style={styles.roomSubtitle}>{housingStatus.hostelName}</Text>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={styles.roomTitle}>No room yet</Text>
+                      <Text style={styles.roomSubtitle}>
+                        {hostels?.length ?? 0} hostels near KNUST
+                        {minPrice ? ` from GH₵${minPrice.toLocaleString()}/yr` : ''}
+                      </Text>
+                    </>
+                  )}
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+              </TouchableOpacity>
             )}
           </ElevatedCard>
         </View>
@@ -82,6 +228,20 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
   },
+  gradientHeader: {
+    paddingBottom: spacing.xxl,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.lg,
+  },
+  avatarInitial: {
+    fontSize: typography.body,
+    fontWeight: typography.weightBold,
+    color: colors.white,
+  },
   greeting: {
     fontSize: typography.h1,
     fontWeight: typography.weightBold,
@@ -92,44 +252,127 @@ const styles = StyleSheet.create({
     fontSize: typography.body,
     color: 'rgba(255,255,255,0.85)',
   },
+  searchCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.background,
+    borderRadius: 14,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    marginHorizontal: spacing.lg,
+    marginTop: -spacing.xl,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  searchPlaceholder: {
+    fontSize: typography.body,
+    color: colors.textMuted,
+  },
   content: {
     flex: 1,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
+    paddingTop: spacing.xl,
     paddingBottom: spacing.xl,
   },
-  exploreCard: {
-    alignItems: 'center',
+  quickActionsRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
     marginBottom: spacing.xl,
   },
-  exploreCardTitle: {
-    fontSize: typography.h2,
-    fontWeight: typography.weightBold,
-    color: colors.text,
-    textAlign: 'center',
-    marginTop: spacing.md,
-    marginBottom: spacing.lg,
+  quickActionTile: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primaryLight,
+    borderRadius: 16,
+    paddingVertical: spacing.md,
   },
-  exploreButton: {
-    width: '100%',
+  quickActionLabel: {
+    fontSize: typography.caption,
+    fontWeight: typography.weightMedium,
+    color: colors.text,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
   },
   sectionTitle: {
     fontSize: typography.body,
     fontWeight: typography.weightBold,
     color: colors.text,
-    marginBottom: spacing.sm,
   },
-  statusCard: {
+  seeAllLink: {
+    fontSize: typography.caption,
+    fontWeight: typography.weightMedium,
+    color: colors.primary,
+  },
+  sectionLoader: {
+    marginBottom: spacing.xl,
+  },
+  matchesRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.xl,
+  },
+  matchCard: {
+    flex: 1,
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  matchInitials: {
+    fontSize: typography.body,
+    fontWeight: typography.weightBold,
+    color: colors.primary,
+  },
+  matchName: {
+    fontSize: typography.caption,
+    fontWeight: typography.weightBold,
+    color: colors.text,
+  },
+  matchPercent: {
+    fontSize: 11,
+    fontWeight: typography.weightMedium,
+  },
+  noMatchesCard: {
+    padding: spacing.md,
+    marginBottom: spacing.xl,
+  },
+  noMatchesText: {
+    fontSize: typography.caption,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+  roomCard: {
     padding: spacing.md,
   },
-  statusRow: {
+  roomRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
   },
-  statusText: {
+  roomFlag: {
+    fontSize: 28,
+    width: 40,
+    textAlign: 'center',
+  },
+  roomTextGroup: {
     flex: 1,
+  },
+  roomTitle: {
     fontSize: typography.body,
+    fontWeight: typography.weightBold,
+    color: colors.text,
+  },
+  roomSubtitle: {
+    fontSize: typography.caption,
     color: colors.textMuted,
+    marginTop: 2,
   },
 });

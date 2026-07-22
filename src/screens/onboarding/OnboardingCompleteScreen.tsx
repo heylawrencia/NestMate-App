@@ -23,6 +23,7 @@ export default function OnboardingCompleteScreen({ navigation, route }: Props) {
     }).start();
 
     updateProfile({
+      email: data.email,
       fullName: data.fullName ?? '',
       dateOfBirth: data.dateOfBirth,
       bio: data.bio,

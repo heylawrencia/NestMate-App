@@ -44,10 +44,16 @@ export type RootStackParamList = {
   MyHostel: undefined;
   Verification: undefined;
   Settings: undefined;
+  Account: undefined;
+  Privacy: undefined;
+  About: undefined;
   HelpSupport: undefined;
   EditProfile: undefined;
   Notifications: undefined;
   Placeholder: { title: string; description?: string };
+  MatchProfile: { matchId: string };
+  IndividualChat: { matchId: string };
+  GroupChat: { hostelId: string; roomTypeId: string };
 };
 
 export type ExploreStackParamList = {
