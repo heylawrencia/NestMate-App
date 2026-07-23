@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CompositeScreenProps } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -49,7 +50,7 @@ export default function ChooseRoomTypeScreen({ navigation, route }: Props) {
           <View style={styles.roomTypeTextGroup}>
             <Text style={styles.roomTypeLabel}>{roomType.label}</Text>
             <Text style={styles.roomTypeMeta}>
-              GHS {roomType.pricePerYear.toLocaleString()}/yr
+              GH₵{roomType.pricePerYear.toLocaleString()}/yr
               {isFull
                 ? ' · Full — join the waitlist'
                 : roomType.studentsMatching
@@ -73,7 +74,7 @@ export default function ChooseRoomTypeScreen({ navigation, route }: Props) {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
       <GradientHeader>
         <HeaderIconRow
           onBack={() => navigation.goBack()}

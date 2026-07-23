@@ -2,13 +2,13 @@ import React, { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import AppButton from '../components/AppButton';
@@ -16,6 +16,7 @@ import CodeInput from '../components/CodeInput';
 import ScreenHeader from '../components/ScreenHeader';
 import { colors, spacing, typography } from '../theme';
 import { RootStackParamList } from '../navigation/types';
+import * as authService from '../services/authService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VerifyEmail'>;
 
@@ -23,7 +24,7 @@ const CODE_LENGTH = 6;
 const RESEND_COOLDOWN_SECONDS = 30;
 
 export default function VerifyEmailScreen({ navigation, route }: Props) {
-  const { email } = route.params;
+  const { email, fullName, mode = 'reset' } = route.params;
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
@@ -40,7 +41,7 @@ export default function VerifyEmailScreen({ navigation, route }: Props) {
     return () => clearInterval(timer);
   }, [cooldown]);
 
-  function handleResend() {
+  async function handleResend() {
     if (cooldown > 0) {
       return;
     }
@@ -48,6 +49,15 @@ export default function VerifyEmailScreen({ navigation, route }: Props) {
     setError(undefined);
     setCooldown(RESEND_COOLDOWN_SECONDS);
     setResetKey((prev) => prev + 1);
+
+    // The 'reset' (forgot-password) path has no backend support yet - only
+    // account email verification exists, not password reset - so it stays mocked.
+    if (mode === 'signup') {
+      const result = await authService.resendVerification(email);
+      if (!result.success) {
+        setError(result.errorMessage);
+      }
+    }
   }
 
   async function handleVerify() {
@@ -56,11 +66,21 @@ export default function VerifyEmailScreen({ navigation, route }: Props) {
       return;
     }
     setError(undefined);
-
     setLoading(true);
+
+    if (mode === 'signup') {
+      const result = await authService.verifyEmail(email, code);
+      setLoading(false);
+      if (result.success) {
+        navigation.navigate('OnboardingAboutYou', { data: { email, fullName } });
+      } else {
+        setError(result.errorMessage);
+      }
+      return;
+    }
+
     await new Promise((resolve) => setTimeout(resolve, 800));
     setLoading(false);
-
     navigation.navigate('Login');
   }
 

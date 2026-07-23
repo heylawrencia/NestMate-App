@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
-import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CompositeScreenProps, useFocusEffect } from '@react-navigation/native';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -15,8 +16,9 @@ import ListRow from '../components/ListRow';
 import { colors, spacing, typography } from '../theme';
 import { MainTabParamList, RootStackParamList } from '../navigation/types';
 import { useDrawer } from '../context/DrawerContext';
+import { useAuth } from '../context/AuthContext';
 import { useAsyncData } from '../hooks/useAsyncData';
-import { fetchProfile } from '../services/profileService';
+import { fetchMyProfile } from '../services/profileService';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabParamList, 'Profile'>,
@@ -25,7 +27,8 @@ type Props = CompositeScreenProps<
 
 export default function ProfileScreen({ navigation }: Props) {
   const { openDrawer } = useDrawer();
-  const { data: profile, loading, error, reload } = useAsyncData(fetchProfile, []);
+  const { email } = useAuth();
+  const { data: profile, loading, error, reload } = useAsyncData(fetchMyProfile, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -34,8 +37,8 @@ export default function ProfileScreen({ navigation }: Props) {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <GradientHeader imageUri={profile?.photos?.[0]}>
+    <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
+      <GradientHeader>
         <HeaderIconRow
           onMenuPress={openDrawer}
           onNotificationsPress={() => navigation.navigate('Notifications')}
@@ -50,18 +53,11 @@ export default function ProfileScreen({ navigation }: Props) {
               <View style={styles.avatarSection}>
                 <View style={styles.avatarWrapper}>
                   <IconCircle size={96}>
-                    {profile.avatarUri ? (
-                      <Image source={{ uri: profile.avatarUri }} style={styles.avatarImage} />
-                    ) : (
-                      <Ionicons name="person" size={40} color={colors.textMuted} />
-                    )}
+                    <Ionicons name="person" size={40} color={colors.textMuted} />
                   </IconCircle>
-                  <TouchableOpacity style={styles.editBadge} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <Ionicons name="camera" size={14} color={colors.white} />
-                  </TouchableOpacity>
                 </View>
 
-                <Text style={styles.name}>{profile.fullName || 'Add your name'}</Text>
+                <Text style={styles.name}>{email}</Text>
                 {profile.bio ? <Text style={styles.subtitle}>{profile.bio}</Text> : null}
 
                 <View style={styles.editButton}>
@@ -130,23 +126,6 @@ const styles = StyleSheet.create({
   },
   avatarWrapper: {
     marginBottom: spacing.md,
-  },
-  editBadge: {
-    position: 'absolute',
-    right: 0,
-    bottom: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.surfaceTint,
-  },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
   },
   name: {
     fontSize: typography.h2,

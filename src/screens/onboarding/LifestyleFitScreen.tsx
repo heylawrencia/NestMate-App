@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import AppButton from '../../components/AppButton';
@@ -54,6 +55,15 @@ const PAGES: QuestionConfig[][] = [
     { key: 'communication', label: 'Communication', options: ['Very Open', 'Open', 'Prefer Private'] },
     { key: 'petFriendly', label: 'Pet Friendly', options: ['Yes', 'Maybe', 'No'] },
   ],
+  [
+    {
+      key: 'seekingType',
+      label: 'Are you looking for a room or offering one?',
+      options: ['Looking for a room', 'Offering a room'],
+    },
+    { key: 'hasPets', label: 'Do you have pets?', options: ['Yes', 'No'] },
+    { key: 'smokerOk', label: 'Okay living with a smoker?', options: ['Yes', 'No'] },
+  ],
 ];
 
 export default function LifestyleFitScreen({ navigation, route }: Props) {
@@ -92,7 +102,7 @@ export default function LifestyleFitScreen({ navigation, route }: Props) {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <ScreenHeader title="Lifestyle Fit" onBack={handleBack} />
 
-        <OnboardingProgressBar totalSteps={7} currentStep={3 + pageIndex} />
+        <OnboardingProgressBar totalSteps={8} currentStep={3 + pageIndex} />
 
         <Text style={styles.pageIndicator}>
           Page {pageIndex + 1} of {PAGES.length}

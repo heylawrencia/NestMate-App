@@ -4,6 +4,10 @@ interface AsyncDataState<T> {
   data: T | null;
   loading: boolean;
   error: string | null;
+  // The raw thrown value, preserved alongside `error`'s message string so callers
+  // that need to branch on e.g. an ApiError's status code (a 402 paywall, etc.)
+  // don't have to resort to string-matching on the message.
+  rawError: unknown;
 }
 
 interface UseAsyncDataResult<T> extends AsyncDataState<T> {
@@ -23,24 +27,29 @@ export function useAsyncData<T>(
   fetcher: () => Promise<T>,
   deps: ReadonlyArray<unknown>,
 ): UseAsyncDataResult<T> {
-  const [state, setState] = useState<AsyncDataState<T>>({ data: null, loading: true, error: null });
+  const [state, setState] = useState<AsyncDataState<T>>({
+    data: null,
+    loading: true,
+    error: null,
+    rawError: null,
+  });
   const [reloadToken, setReloadToken] = useState(0);
 
   const reload = useCallback(() => setReloadToken((token) => token + 1), []);
 
   useEffect(() => {
     let cancelled = false;
-    setState((prev) => ({ data: prev.data, loading: true, error: null }));
+    setState((prev) => ({ data: prev.data, loading: true, error: null, rawError: null }));
 
     fetcher()
       .then((data) => {
         if (!cancelled) {
-          setState({ data, loading: false, error: null });
+          setState({ data, loading: false, error: null, rawError: null });
         }
       })
       .catch((error) => {
         if (!cancelled) {
-          setState({ data: null, loading: false, error: toErrorMessage(error) });
+          setState({ data: null, loading: false, error: toErrorMessage(error), rawError: error });
         }
       });
 

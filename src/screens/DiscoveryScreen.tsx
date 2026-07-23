@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { FlatList, Image, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Image, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CompositeScreenProps } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -68,7 +69,7 @@ export default function DiscoveryScreen({ navigation }: Props) {
             <Badge label={`${item.bedsAvailable} beds`} tone={isLowAvailability ? 'warning' : 'success'} />
           </View>
           <Text style={styles.cardSubtitle}>
-            {item.location}, from GHS {item.fromPricePerYear.toLocaleString()}/yr
+            {item.location}, from GH₵{item.fromPricePerYear.toLocaleString()}/yr
           </Text>
         </View>
       </SelectableCard>
@@ -76,7 +77,7 @@ export default function DiscoveryScreen({ navigation }: Props) {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
       <GradientHeader style={styles.gradientHeader}>
         <HeaderIconRow
           onMenuPress={openDrawer}

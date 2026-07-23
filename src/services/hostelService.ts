@@ -1,37 +1,119 @@
-import { MOCK_HOSTELS } from '../data/hostels';
-import { Hostel, HostelSearchFilters, RoomType, VerifyAccessCodeResult } from '../types/hostel';
-
-const ACCESS_CODE_LENGTH = 6;
-
-const MOCK_NETWORK_DELAY_MS = 500;
+import { apiClient } from './apiClient';
+import { Hostel, HostelCategory, HostelSearchFilters, RoomType, VerifyAccessCodeResult } from '../types/hostel';
 
 export const CURRENT_ACADEMIC_YEAR = '2026/27';
 
-function delay<T>(value: T): Promise<T> {
-  return new Promise((resolve) => setTimeout(() => resolve(value), MOCK_NETWORK_DELAY_MS));
+type BackendHostelKind = 'HOSTEL' | 'APARTMENT';
+
+interface BackendHostelSummary {
+  hostelId: number;
+  name: string;
+  area: string;
+  photoUrl: string | null;
+  rating: number;
+  kind: BackendHostelKind;
+  fromPricePerYear: number;
+  bedsAvailable: number;
 }
 
-/**
- * Mock implementation of the hostels API. Every function is async and
- * returns plain serializable data, so swapping the body for a real
- * `fetch(...)`/API client call later doesn't require touching any callers.
- */
+interface BackendRoomTypeInfo {
+  roomTypeId: number;
+  capacity: number;
+  pricePerBedPerYear: number;
+  bedsAvailable: number;
+}
+
+interface BackendHostelDetail {
+  hostelId: number;
+  name: string;
+  description: string;
+  area: string;
+  photoUrl: string | null;
+  rating: number;
+  kind: BackendHostelKind;
+  roomTypes: BackendRoomTypeInfo[];
+}
+
+function toCategory(kind: BackendHostelKind): HostelCategory {
+  return kind === 'APARTMENT' ? 'Apartments' : 'Hostels';
+}
+
+function toKind(category: HostelCategory): BackendHostelKind {
+  return category === 'Apartments' ? 'APARTMENT' : 'HOSTEL';
+}
+
+function toRoomType(info: BackendRoomTypeInfo): RoomType {
+  return {
+    id: String(info.roomTypeId),
+    label: `${info.capacity}-in-a-room`,
+    pricePerYear: info.pricePerBedPerYear,
+    capacity: info.capacity,
+    bedsLeft: info.bedsAvailable,
+  };
+}
+
+function toHostelSummary(summary: BackendHostelSummary): Hostel {
+  return {
+    id: String(summary.hostelId),
+    name: summary.name,
+    // No backend equivalent for these decorative fields - best-effort defaults so
+    // existing UI (which treats them as required) doesn't need optional-chaining.
+    shortName: summary.name,
+    category: toCategory(summary.kind),
+    location: summary.area,
+    distanceNote: '',
+    rating: summary.rating,
+    bedsAvailable: summary.bedsAvailable,
+    fromPricePerYear: summary.fromPricePerYear,
+    imageUrl: summary.photoUrl ?? undefined,
+    amenities: [],
+    roomTypes: [],
+  };
+}
+
+function toHostelDetail(detail: BackendHostelDetail): Hostel {
+  const roomTypes = detail.roomTypes.map(toRoomType);
+  const bedsAvailable = roomTypes.reduce((sum, roomType) => sum + roomType.bedsLeft, 0);
+  const fromPricePerYear = roomTypes.length
+    ? Math.min(...roomTypes.map((roomType) => roomType.pricePerYear))
+    : 0;
+
+  return {
+    id: String(detail.hostelId),
+    name: detail.name,
+    shortName: detail.name,
+    category: toCategory(detail.kind),
+    location: detail.area,
+    distanceNote: '',
+    rating: detail.rating,
+    bedsAvailable,
+    fromPricePerYear,
+    imageUrl: detail.photoUrl ?? undefined,
+    amenities: [],
+    roomTypes,
+  };
+}
+
 export async function fetchHostels(filters: HostelSearchFilters = {}): Promise<Hostel[]> {
-  const { category, query } = filters;
-  const normalizedQuery = query?.trim().toLowerCase();
-
-  const results = MOCK_HOSTELS.filter((hostel) => {
-    const matchesCategory = !category || hostel.category === category;
-    const matchesQuery = !normalizedQuery || hostel.name.toLowerCase().includes(normalizedQuery);
-    return matchesCategory && matchesQuery;
-  });
-
-  return delay(results);
+  const params = new URLSearchParams();
+  if (filters.query?.trim()) {
+    params.set('search', filters.query.trim());
+  }
+  if (filters.category) {
+    params.set('kind', toKind(filters.category));
+  }
+  const query = params.toString();
+  const summaries = await apiClient.get<BackendHostelSummary[]>(`/api/hostels${query ? `?${query}` : ''}`);
+  return summaries.map(toHostelSummary);
 }
 
 export async function fetchHostelById(hostelId: string): Promise<Hostel | null> {
-  const hostel = MOCK_HOSTELS.find((item) => item.id === hostelId) ?? null;
-  return delay(hostel);
+  try {
+    const detail = await apiClient.get<BackendHostelDetail>(`/api/hostels/${hostelId}`);
+    return toHostelDetail(detail);
+  } catch {
+    return null;
+  }
 }
 
 export function getRoomType(hostel: Hostel, roomTypeId: string): RoomType | undefined {
@@ -49,11 +131,10 @@ export function getRoomTypeSummary(hostel: Hostel): string {
     .join(' · ');
 }
 
-export async function verifyAccessCode(
-  hostelId: string,
-  code: string,
-): Promise<VerifyAccessCodeResult> {
-  return delay({ success: Boolean(hostelId) && code.length === ACCESS_CODE_LENGTH });
+// AccessCode/CodeVerified screens are reworked in Phase 2 to hit the real
+// hold-confirmation endpoint; this stays a stub until that lands.
+export async function verifyAccessCode(hostelId: string, code: string): Promise<VerifyAccessCodeResult> {
+  return { success: Boolean(hostelId) && code.length === 6 };
 }
 
 export function formatAccessCode(code: string): string {

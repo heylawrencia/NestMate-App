@@ -156,7 +156,7 @@ export default function RoommateMatchingScreen({ navigation, route }: Props) {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
       <GradientHeader>
         <HeaderIconRow
           onBack={() => navigation.goBack()}

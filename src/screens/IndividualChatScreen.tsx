@@ -1,14 +1,14 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -17,9 +17,11 @@ import ChatComposer from '../components/ChatComposer';
 import IconCircle from '../components/IconCircle';
 import { colors, spacing, typography } from '../theme';
 import { RootStackParamList } from '../navigation/types';
+import { useAuth } from '../context/AuthContext';
 import { useAsyncData } from '../hooks/useAsyncData';
-import { fetchMatchById } from '../services/roommateService';
-import { fetchMessages, sendMessage } from '../services/chatService';
+import { fetchConversationMessages, sendConversationMessage } from '../services/conversationService';
+import { subscribeToConversation } from '../services/chatSocket';
+import { ChatMessage } from '../types/chat';
 import { ChatListItem, buildChatListItems, formatMessageTime } from '../utils/chatFormatting';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'IndividualChat'>;
@@ -27,9 +29,14 @@ type Props = NativeStackScreenProps<RootStackParamList, 'IndividualChat'>;
 const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
 
 export default function IndividualChatScreen({ navigation, route }: Props) {
-  const { matchId } = route.params;
-  const { data: match } = useAsyncData(() => fetchMatchById(matchId), [matchId]);
-  const { data: messages, reload: reloadMessages } = useAsyncData(() => fetchMessages(matchId), [matchId]);
+  const { matchId, otherUserName } = route.params;
+  const otherUserId = Number(matchId);
+  const { userId, token } = useAuth();
+  const { data: messages, reload: reloadMessages } = useAsyncData(
+    () => fetchConversationMessages(otherUserId),
+    [otherUserId],
+  );
+  const [liveMessages, setLiveMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
 
@@ -39,6 +46,32 @@ export default function IndividualChatScreen({ navigation, route }: Props) {
     }, [reloadMessages]),
   );
 
+  function appendMessage(message: ChatMessage) {
+    setLiveMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]));
+  }
+
+  useEffect(() => {
+    if (!token || !userId) {
+      return;
+    }
+    const conversationKey = [userId, otherUserId].sort((a, b) => a - b).join('-');
+    const client = subscribeToConversation(token, conversationKey, appendMessage);
+    return () => {
+      client.deactivate();
+    };
+  }, [token, userId, otherUserId]);
+
+  const allMessages = useMemo(() => {
+    const byId = new Map<string, ChatMessage>();
+    for (const message of messages ?? []) {
+      byId.set(message.id, message);
+    }
+    for (const message of liveMessages) {
+      byId.set(message.id, message);
+    }
+    return Array.from(byId.values()).sort((a, b) => a.sentAt - b.sentAt);
+  }, [messages, liveMessages]);
+
   async function handleSend() {
     const text = draft.trim();
     if (!text || sending) {
@@ -46,8 +79,8 @@ export default function IndividualChatScreen({ navigation, route }: Props) {
     }
     setSending(true);
     setDraft('');
-    await sendMessage(matchId, text);
-    await reloadMessages();
+    const message = await sendConversationMessage(otherUserId, text);
+    appendMessage(message);
     setSending(false);
   }
 
@@ -60,7 +93,7 @@ export default function IndividualChatScreen({ navigation, route }: Props) {
       );
     }
 
-    const isMine = item.message.senderId === 'me';
+    const isMine = Number(item.message.senderId) === userId;
     return (
       <View style={[styles.bubbleRow, isMine && styles.bubbleRowMine]}>
         <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleTheirs]}>
@@ -73,8 +106,8 @@ export default function IndividualChatScreen({ navigation, route }: Props) {
     );
   }
 
-  const firstName = match?.name.split(' ')[0] ?? '';
-  const listItems = buildChatListItems(messages ?? []);
+  const firstName = otherUserName?.split(' ')[0] ?? '';
+  const listItems = buildChatListItems(allMessages);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -94,15 +127,12 @@ export default function IndividualChatScreen({ navigation, route }: Props) {
           onPress={() => navigation.navigate('MatchProfile', { matchId })}
         >
           <IconCircle size={36} backgroundColor={colors.primaryLight}>
-            <Text style={styles.avatarInitial}>{(match?.name ?? '?').charAt(0).toUpperCase()}</Text>
+            <Text style={styles.avatarInitial}>{(otherUserName ?? '?').charAt(0).toUpperCase()}</Text>
           </IconCircle>
           <View>
             <Text style={styles.headerName} numberOfLines={1}>
-              {match?.name ?? 'Roommate'}
+              {otherUserName ?? 'Roommate'}
             </Text>
-            {match?.matchPercent != null ? (
-              <Text style={styles.headerSubtitle}>{match.matchPercent}% match</Text>
-            ) : null}
           </View>
         </TouchableOpacity>
 
@@ -183,11 +213,6 @@ const styles = StyleSheet.create({
     fontSize: typography.body,
     fontWeight: typography.weightBold,
     color: colors.text,
-  },
-  headerSubtitle: {
-    fontSize: typography.caption,
-    color: colors.success,
-    fontWeight: typography.weightMedium,
   },
   messagesContent: {
     flexGrow: 1,

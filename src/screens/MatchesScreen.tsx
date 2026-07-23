@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { CompositeScreenProps, useFocusEffect } from '@react-navigation/native';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -14,8 +15,8 @@ import IconCircle from '../components/IconCircle';
 import { colors, spacing, typography } from '../theme';
 import { MainTabParamList, RootStackParamList } from '../navigation/types';
 import { useAsyncData } from '../hooks/useAsyncData';
-import { fetchAllMatches } from '../services/roommateService';
-import { RoommateGroupMember } from '../types/roommate';
+import { fetchMatches } from '../services/matchService';
+import { Match } from '../types/match';
 import { useDrawer } from '../context/DrawerContext';
 
 type Props = CompositeScreenProps<
@@ -25,7 +26,7 @@ type Props = CompositeScreenProps<
 
 export default function MatchesScreen({ navigation }: Props) {
   const { openDrawer } = useDrawer();
-  const { data: matches, loading, error, reload } = useAsyncData(fetchAllMatches, []);
+  const { data: matches, loading, error, reload } = useAsyncData(() => fetchMatches(), []);
 
   useFocusEffect(
     useCallback(() => {
@@ -33,25 +34,25 @@ export default function MatchesScreen({ navigation }: Props) {
     }, [reload]),
   );
 
-  function renderMatch(member: RoommateGroupMember, index: number, all: RoommateGroupMember[]) {
+  function renderMatch(match: Match, index: number, all: Match[]) {
     return (
       <TouchableOpacity
-        key={member.id}
+        key={match.userId}
         style={[styles.matchRow, index < all.length - 1 && styles.matchRowDivider]}
         activeOpacity={0.7}
-        onPress={() => navigation.navigate('MatchProfile', { matchId: member.id })}
+        onPress={() => navigation.navigate('MatchProfile', { matchId: String(match.userId) })}
       >
         <IconCircle size={48} backgroundColor={colors.primaryLight}>
-          <Text style={styles.matchInitial}>{member.name.charAt(0).toUpperCase()}</Text>
+          <Text style={styles.matchInitial}>{match.fullName.charAt(0).toUpperCase()}</Text>
         </IconCircle>
-        <Text style={styles.matchName}>{member.name}</Text>
-        <Badge label={`${member.matchPercent}% match`} tone="success" />
+        <Text style={styles.matchName}>{match.fullName}</Text>
+        <Badge label={`${Math.round(match.score)}% match`} tone="success" />
       </TouchableOpacity>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
       <GradientHeader>
         <HeaderIconRow
           onMenuPress={openDrawer}

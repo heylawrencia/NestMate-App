@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
-import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CompositeScreenProps, useFocusEffect } from '@react-navigation/native';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -13,9 +14,10 @@ import { MainTabParamList, RootStackParamList } from '../navigation/types';
 import { useAsyncData } from '../hooks/useAsyncData';
 import { fetchHousingStatus } from '../services/userService';
 import { fetchHostels } from '../services/hostelService';
-import { fetchTopMatches } from '../services/roommateService';
-import { RoommateGroupMember } from '../types/roommate';
+import { fetchMatches, isPaywallError } from '../services/matchService';
+import { Match } from '../types/match';
 import { useDrawer } from '../context/DrawerContext';
+import { useAuth } from '../context/AuthContext';
 import { displayNameFor } from '../utils/formatName';
 
 type Props = CompositeScreenProps<
@@ -34,15 +36,18 @@ function initialsFor(name: string): string {
     .toUpperCase();
 }
 
-export default function HomeScreen({ navigation, route }: Props) {
-  const { email, name } = route.params;
-  const firstName = displayNameFor(email, name);
+export default function HomeScreen({ navigation }: Props) {
+  const { email } = useAuth();
+  const firstName = displayNameFor(email ?? '');
   const { data: housingStatus, loading: housingLoading } = useAsyncData(fetchHousingStatus, []);
   const { data: hostels, loading: hostelsLoading } = useAsyncData(() => fetchHostels(), []);
-  const { data: topMatches, loading: matchesLoading, reload: reloadTopMatches } = useAsyncData(
-    () => fetchTopMatches(3),
-    [],
-  );
+  const {
+    data: topMatches,
+    loading: matchesLoading,
+    rawError: matchesRawError,
+    reload: reloadTopMatches,
+  } = useAsyncData(() => fetchMatches(3), []);
+  const matchesPaywalled = isPaywallError(matchesRawError);
   const { openDrawer } = useDrawer();
 
   useFocusEffect(
@@ -82,7 +87,7 @@ export default function HomeScreen({ navigation, route }: Props) {
   ];
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <GradientHeader style={styles.gradientHeader}>
           <View style={styles.headerRow}>
@@ -137,28 +142,34 @@ export default function HomeScreen({ navigation, route }: Props) {
 
           {matchesLoading ? (
             <ActivityIndicator color={colors.primary} style={styles.sectionLoader} />
+          ) : matchesPaywalled ? (
+            <ElevatedCard style={styles.noMatchesCard}>
+              <Text style={styles.noMatchesText}>
+                You&apos;ve used your free matches this month. Upgrade to Premium for unlimited matching.
+              </Text>
+            </ElevatedCard>
           ) : topMatches && topMatches.length > 0 ? (
             <View style={styles.matchesRow}>
-              {topMatches.map((candidate: RoommateGroupMember, index: number) => (
+              {topMatches.map((match: Match, index: number) => (
                 <TouchableOpacity
-                  key={candidate.id}
+                  key={match.userId}
                   style={styles.matchCard}
                   activeOpacity={0.7}
-                  onPress={() => navigation.navigate('MatchProfile', { matchId: candidate.id })}
+                  onPress={() => navigation.navigate('MatchProfile', { matchId: String(match.userId) })}
                 >
                   <IconCircle size={56} backgroundColor={MATCH_AVATAR_TONES[index % MATCH_AVATAR_TONES.length]}>
-                    <Text style={styles.matchInitials}>{initialsFor(candidate.name)}</Text>
+                    <Text style={styles.matchInitials}>{initialsFor(match.fullName)}</Text>
                   </IconCircle>
                   <Text style={styles.matchName} numberOfLines={1}>
-                    {candidate.name.split(' ')[0]} {candidate.name.split(' ')[1]?.charAt(0)}.
+                    {match.fullName.split(' ')[0]} {match.fullName.split(' ')[1]?.charAt(0)}.
                   </Text>
                   <Text
                     style={[
                       styles.matchPercent,
-                      { color: (candidate.matchPercent ?? 0) >= 85 ? colors.success : colors.accent },
+                      { color: match.score >= 85 ? colors.success : colors.accent },
                     ]}
                   >
-                    {candidate.matchPercent}% match
+                    {Math.round(match.score)}% match
                   </Text>
                 </TouchableOpacity>
               ))}

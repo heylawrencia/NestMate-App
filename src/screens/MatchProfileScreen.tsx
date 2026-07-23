@@ -1,5 +1,6 @@
 import React from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -11,25 +12,46 @@ import HeaderIconRow from '../components/HeaderIconRow';
 import { colors, spacing, typography } from '../theme';
 import { RootStackParamList } from '../navigation/types';
 import { useAsyncData } from '../hooks/useAsyncData';
-import { fetchMatchById } from '../services/roommateService';
+import { fetchMatches } from '../services/matchService';
+import { fetchProfileByUserId } from '../services/profileService';
 import { useDrawer } from '../context/DrawerContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MatchProfile'>;
 
+const SLEEP_SCHEDULE_LABELS: Record<string, string> = {
+  EARLY_BIRD: 'Early Bird',
+  NIGHT_OWL: 'Night Owl',
+  FLEXIBLE: 'Flexible',
+};
+
 export default function MatchProfileScreen({ navigation, route }: Props) {
   const { matchId } = route.params;
+  const userId = Number(matchId);
   const { openDrawer } = useDrawer();
-  const { data: match, loading, error, reload } = useAsyncData(() => fetchMatchById(matchId), [matchId]);
+  const { data, loading, error, reload } = useAsyncData(async () => {
+    const [matches, profile] = await Promise.all([fetchMatches(), fetchProfileByUserId(userId)]);
+    return { match: matches.find((m) => m.userId === userId), profile };
+  }, [userId]);
+
+  const match = data?.match;
+  const profile = data?.profile;
+  const facts = profile
+    ? [
+        profile.city,
+        SLEEP_SCHEDULE_LABELS[profile.sleepSchedule] ?? profile.sleepSchedule,
+        `GH₵${profile.budgetMin.toLocaleString()}–${profile.budgetMax.toLocaleString()}/yr`,
+      ].filter(Boolean)
+    : [];
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
       <GradientHeader>
         <HeaderIconRow
           onBack={() => navigation.goBack()}
           onMenuPress={openDrawer}
           onNotificationsPress={() => navigation.navigate('Notifications')}
         />
-        <Text style={styles.headerTitle}>{match?.name ?? 'Profile'}</Text>
+        <Text style={styles.headerTitle}>{match?.fullName ?? 'Profile'}</Text>
       </GradientHeader>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -42,36 +64,33 @@ export default function MatchProfileScreen({ navigation, route }: Props) {
                 </View>
 
                 <View style={styles.nameRow}>
-                  <Text style={styles.name}>{match.name}</Text>
-                  {match.matchPercent != null ? (
-                    <Badge label={`${match.matchPercent}%`} tone="success" />
-                  ) : null}
+                  <Text style={styles.name}>{match.fullName}</Text>
+                  <Badge label={`${Math.round(match.score)}%`} tone="success" />
                 </View>
 
-                {match.program || match.level ? (
-                  <Text style={styles.programText}>
-                    {[match.program, match.level].filter(Boolean).join(' · ')}
-                  </Text>
-                ) : null}
-
-                {match.traits && match.traits.length > 0 ? (
+                {facts.length > 0 ? (
                   <View style={styles.traitsRow}>
-                    {match.traits.map((trait) => (
-                      <View key={trait} style={styles.traitPill}>
-                        <Text style={styles.traitText}>{trait}</Text>
+                    {facts.map((fact) => (
+                      <View key={fact} style={styles.traitPill}>
+                        <Text style={styles.traitText}>{fact}</Text>
                       </View>
                     ))}
                   </View>
                 ) : null}
 
-                {match.bio ? <Text style={styles.bioText}>{match.bio}</Text> : null}
+                {profile?.bio ? <Text style={styles.bioText}>{profile.bio}</Text> : null}
               </ElevatedCard>
 
               <View style={styles.actionsRow}>
                 <TouchableOpacity
                   style={[styles.actionButton, styles.actionButtonPrimary]}
-                  onPress={() => navigation.navigate('IndividualChat', { matchId: match.id })}
-                  accessibilityLabel={`Message ${match.name}`}
+                  onPress={() =>
+                    navigation.navigate('IndividualChat', {
+                      matchId: String(match.userId),
+                      otherUserName: match.fullName,
+                    })
+                  }
+                  accessibilityLabel={`Message ${match.fullName}`}
                   accessibilityRole="button"
                 >
                   <Ionicons name="chatbubble" size={22} color={colors.white} />

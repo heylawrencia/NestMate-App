@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -69,7 +70,7 @@ export default function UploadPhotosScreen({ navigation, route }: Props) {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <ScreenHeader title="Upload Photos" onBack={() => navigation.goBack()} />
 
-        <OnboardingProgressBar totalSteps={7} currentStep={1} />
+        <OnboardingProgressBar totalSteps={8} currentStep={1} />
 
         <Text style={styles.subtitle}>
           Add at least {MIN_PHOTOS} photo{MIN_PHOTOS === 1 ? '' : 's'}

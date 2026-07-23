@@ -5,13 +5,13 @@ import {
   ListRenderItemInfo,
   NativeScrollEvent,
   NativeSyntheticEvent,
-  StatusBar,
   StyleSheet,
   Text,
   useWindowDimensions,
   View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -82,7 +82,7 @@ export default function GetStartedScreen({ navigation }: Props) {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar style="light" />
 
       <FlatList
         ref={listRef}

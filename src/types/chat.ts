@@ -5,3 +5,12 @@ export interface ChatMessage {
   text: string;
   sentAt: number;
 }
+
+export interface ConversationSummary {
+  otherUserId: number;
+  otherUserName: string;
+  lastMessage: string;
+  lastMessageSenderId: number;
+  lastMessageAt: string;
+  unreadCount: number;
+}

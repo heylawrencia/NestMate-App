@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import AppButton from '../../components/AppButton';
@@ -49,7 +50,7 @@ export default function InterestsScreen({ navigation, route }: Props) {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <ScreenHeader title="Select Your Interests" onBack={() => navigation.goBack()} />
 
-        <OnboardingProgressBar totalSteps={7} currentStep={2} />
+        <OnboardingProgressBar totalSteps={8} currentStep={2} />
 
         <Text style={styles.subtitle}>Choose all that apply</Text>
 

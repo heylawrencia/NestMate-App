@@ -1,5 +1,6 @@
 import React from 'react';
-import { Image, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CompositeScreenProps } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -29,7 +30,7 @@ export default function HostelDetailScreen({ navigation, route }: Props) {
   const { openDrawer } = useDrawer();
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
       <GradientHeader>
         <HeaderIconRow
           onBack={() => navigation.goBack()}
@@ -76,7 +77,8 @@ export default function HostelDetailScreen({ navigation, route }: Props) {
               <View style={styles.locationRow}>
                 <Ionicons name="location-outline" size={16} color={colors.textMuted} />
                 <Text style={styles.locationText}>
-                  {hostel.location} · {hostel.distanceNote}
+                  {hostel.location}
+                  {hostel.distanceNote ? ` · ${hostel.distanceNote}` : ''}
                 </Text>
               </View>
 
@@ -92,8 +94,8 @@ export default function HostelDetailScreen({ navigation, route }: Props) {
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>Price range</Text>
                   <Text style={styles.summaryValue}>
-                    GHS {getPriceRange(hostel).min.toLocaleString()} – {getPriceRange(hostel).max.toLocaleString()}
-                    /yr
+                    GH₵{getPriceRange(hostel).min.toLocaleString()} – GH₵
+                    {getPriceRange(hostel).max.toLocaleString()}/yr
                   </Text>
                 </View>
                 <View style={[styles.summaryRow, styles.summaryRowLast]}>

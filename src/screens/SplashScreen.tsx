@@ -1,9 +1,11 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Image, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { Animated, Image, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { colors, moderateScale, spacing, typography } from '../theme';
 import { RootStackParamList } from '../navigation/types';
+import { useAuth } from '../context/AuthContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Splash'>;
 
@@ -11,6 +13,7 @@ const SPLASH_DURATION_MS = 1600;
 
 export default function SplashScreen({ navigation }: Props) {
   const progress = useRef(new Animated.Value(0)).current;
+  const { token, isLoading } = useAuth();
 
   useEffect(() => {
     Animated.timing(progress, {
@@ -18,13 +21,19 @@ export default function SplashScreen({ navigation }: Props) {
       duration: SPLASH_DURATION_MS,
       useNativeDriver: false,
     }).start();
+  }, [progress]);
+
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
 
     const timer = setTimeout(() => {
-      navigation.replace('GetStarted');
+      navigation.replace(token ? 'Home' : 'GetStarted');
     }, SPLASH_DURATION_MS);
 
     return () => clearTimeout(timer);
-  }, [navigation, progress]);
+  }, [navigation, isLoading, token]);
 
   const progressWidth = progress.interpolate({
     inputRange: [0, 1],

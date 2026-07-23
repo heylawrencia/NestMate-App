@@ -3,13 +3,13 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -36,6 +36,8 @@ interface FormErrors {
   dateOfBirth?: string;
   gender?: string;
   schoolLevel?: string;
+  city?: string;
+  budget?: string;
 }
 
 export default function AboutYouScreen({ navigation, route }: Props) {
@@ -48,6 +50,9 @@ export default function AboutYouScreen({ navigation, route }: Props) {
   const [bio, setBio] = useState(data.bio ?? '');
   const [gender, setGender] = useState(data.gender);
   const [schoolLevel, setSchoolLevel] = useState(data.schoolLevel);
+  const [city, setCity] = useState(data.city ?? '');
+  const [budgetMin, setBudgetMin] = useState(data.budgetMin ?? '');
+  const [budgetMax, setBudgetMax] = useState(data.budgetMax ?? '');
   const [errors, setErrors] = useState<FormErrors>({});
 
   function handleBioChange(text: string) {
@@ -86,6 +91,16 @@ export default function AboutYouScreen({ navigation, route }: Props) {
     if (!schoolLevel) {
       nextErrors.schoolLevel = 'Please select your school / level.';
     }
+    if (!city.trim()) {
+      nextErrors.city = 'City is required.';
+    }
+    const min = Number(budgetMin);
+    const max = Number(budgetMax);
+    if (!budgetMin || !budgetMax || Number.isNaN(min) || Number.isNaN(max)) {
+      nextErrors.budget = 'Enter a valid budget range.';
+    } else if (max < min) {
+      nextErrors.budget = 'Max budget must be at least min budget.';
+    }
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   }
@@ -103,6 +118,9 @@ export default function AboutYouScreen({ navigation, route }: Props) {
         bio: bio.trim(),
         gender,
         schoolLevel,
+        city: city.trim(),
+        budgetMin,
+        budgetMax,
       },
     });
   }
@@ -113,7 +131,7 @@ export default function AboutYouScreen({ navigation, route }: Props) {
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <ScreenHeader title="Tell Me About Yourself" onBack={() => navigation.goBack()} />
 
-          <OnboardingProgressBar totalSteps={7} currentStep={0} />
+          <OnboardingProgressBar totalSteps={8} currentStep={0} />
 
           <TouchableOpacity style={styles.avatarTouchable} onPress={handlePickAvatar} activeOpacity={0.8}>
             <IconCircle size={88}>
@@ -169,6 +187,37 @@ export default function AboutYouScreen({ navigation, route }: Props) {
               error={errors.schoolLevel}
             />
 
+            <AppTextInput
+              label="City"
+              placeholder="e.g. Kumasi"
+              value={city}
+              onChangeText={setCity}
+              error={errors.city}
+              autoCapitalize="words"
+            />
+
+            <View style={styles.budgetRow}>
+              <View style={styles.budgetField}>
+                <AppTextInput
+                  label="Min Budget (GH₵/yr)"
+                  placeholder="e.g. 2000"
+                  value={budgetMin}
+                  onChangeText={setBudgetMin}
+                  keyboardType="numeric"
+                />
+              </View>
+              <View style={styles.budgetField}>
+                <AppTextInput
+                  label="Max Budget (GH₵/yr)"
+                  placeholder="e.g. 5000"
+                  value={budgetMax}
+                  onChangeText={setBudgetMax}
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+            {errors.budget ? <Text style={styles.budgetError}>{errors.budget}</Text> : null}
+
             <AppButton title="Continue" onPress={handleContinue} />
           </View>
         </ScrollView>
@@ -200,5 +249,18 @@ const styles = StyleSheet.create({
   },
   form: {
     width: '100%',
+  },
+  budgetRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  budgetField: {
+    flex: 1,
+  },
+  budgetError: {
+    color: colors.error,
+    fontSize: typography.caption,
+    marginTop: -spacing.sm,
+    marginBottom: spacing.md,
   },
 });

@@ -8,6 +8,7 @@ import { colors } from '../theme';
 import { DrawerProvider } from '../context/DrawerContext';
 import HomeDrawerMenu, { DrawerMenuItem } from '../components/HomeDrawerMenu';
 import { displayNameFor } from '../utils/formatName';
+import { useAuth } from '../context/AuthContext';
 import HomeScreen from '../screens/HomeScreen';
 import ExploreStackNavigator from './ExploreStackNavigator';
 import ChatScreen from '../screens/ChatScreen';
@@ -26,15 +27,12 @@ const TAB_ICONS: Record<keyof MainTabParamList, { active: string; inactive: stri
   Profile: { active: 'person', inactive: 'person-outline' },
 };
 
-export default function MainTabNavigator({ navigation, route }: Props) {
-  // Captured once: navigating to a nested tab screen (e.g. `navigate('Home', { screen: 'Matches' })`)
-  // replaces this screen's route.params entirely rather than merging, so re-reading
-  // route.params on every render would lose email/name after such a navigation.
-  const [{ email, name }] = useState(() => ({ email: route.params.email, name: route.params.name }));
-  const firstName = displayNameFor(email, name);
+export default function MainTabNavigator({ navigation }: Props) {
+  const { email, logout } = useAuth();
+  const firstName = displayNameFor(email ?? '');
   const [drawerVisible, setDrawerVisible] = useState(false);
 
-  function closeDrawerThen(action: () => void) {
+  function closeDrawerThen(action: () => void | Promise<void>) {
     setDrawerVisible(false);
     action();
   }
@@ -96,7 +94,7 @@ export default function MainTabNavigator({ navigation, route }: Props) {
           },
         })}
       >
-        <Tab.Screen name="HomeTab" component={HomeScreen} initialParams={{ email, name }} />
+        <Tab.Screen name="HomeTab" component={HomeScreen} />
         <Tab.Screen name="Explore" component={ExploreStackNavigator} />
         <Tab.Screen name="Chat" component={ChatScreen} />
         <Tab.Screen name="Matches" component={MatchesScreen} />
@@ -110,7 +108,10 @@ export default function MainTabNavigator({ navigation, route }: Props) {
         verified
         items={drawerItems}
         onLogOut={() =>
-          closeDrawerThen(() => navigation.reset({ index: 0, routes: [{ name: 'Login' }] }))
+          closeDrawerThen(async () => {
+            await logout();
+            navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+          })
         }
       />
     </DrawerProvider>

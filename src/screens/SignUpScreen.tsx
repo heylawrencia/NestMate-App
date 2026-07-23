@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -17,12 +17,16 @@ import AppButton from '../components/AppButton';
 import ScreenHeader from '../components/ScreenHeader';
 import { colors, spacing, typography } from '../theme';
 import { RootStackParamList } from '../navigation/types';
+import { useAuth } from '../context/AuthContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SignUp'>;
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Backend requires passwords of at least 8 characters (AuthDtos.RegisterRequest).
+const MIN_PASSWORD_LENGTH = 8;
 
 interface FormErrors {
+  fullName?: string;
   email?: string;
   password?: string;
   confirmPassword?: string;
@@ -30,6 +34,8 @@ interface FormErrors {
 }
 
 export default function SignUpScreen({ navigation }: Props) {
+  const { register } = useAuth();
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -37,21 +43,28 @@ export default function SignUpScreen({ navigation }: Props) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
+  const [formError, setFormError] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
 
   function validate(): boolean {
     const nextErrors: FormErrors = {};
 
+    if (!fullName.trim()) {
+      nextErrors.fullName = 'Full name is required.';
+    }
+
     if (!email.trim()) {
       nextErrors.email = 'Email is required.';
     } else if (!EMAIL_REGEX.test(email.trim())) {
       nextErrors.email = 'Enter a valid email address.';
+    } else if (!email.trim().toLowerCase().endsWith('@gmail.com')) {
+      nextErrors.email = 'Please use a Gmail address (e.g. name@gmail.com).';
     }
 
     if (!password) {
       nextErrors.password = 'Password is required.';
-    } else if (password.length < 6) {
-      nextErrors.password = 'Password must be at least 6 characters.';
+    } else if (password.length < MIN_PASSWORD_LENGTH) {
+      nextErrors.password = `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
     }
 
     if (confirmPassword !== password) {
@@ -67,15 +80,25 @@ export default function SignUpScreen({ navigation }: Props) {
   }
 
   async function handleSignUp() {
+    setFormError(undefined);
+
     if (!validate()) {
       return;
     }
 
     setLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    const result = await register(email.trim(), password, fullName.trim());
     setLoading(false);
 
-    navigation.navigate('OnboardingAboutYou', { data: { email: email.trim() } });
+    if (result.success) {
+      navigation.navigate('VerifyEmail', {
+        email: email.trim(),
+        fullName: fullName.trim(),
+        mode: 'signup',
+      });
+    } else {
+      setFormError(result.errorMessage ?? 'Something went wrong. Please try again.');
+    }
   }
 
   return (
@@ -91,6 +114,15 @@ export default function SignUpScreen({ navigation }: Props) {
           <ScreenHeader title="Create Account" onBack={() => navigation.goBack()} />
 
           <View style={styles.form}>
+            <AppTextInput
+              label="Full Name"
+              placeholder="Your full name"
+              value={fullName}
+              onChangeText={setFullName}
+              error={errors.fullName}
+              autoCapitalize="words"
+            />
+
             <AppTextInput
               label="Email"
               placeholder="you@example.com"
@@ -163,6 +195,7 @@ export default function SignUpScreen({ navigation }: Props) {
               </Text>
             </TouchableOpacity>
             {errors.terms ? <Text style={styles.formError}>{errors.terms}</Text> : null}
+            {formError ? <Text style={styles.formError}>{formError}</Text> : null}
 
             <AppButton title="Sign Up" onPress={handleSignUp} loading={loading} />
 

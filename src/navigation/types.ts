@@ -13,6 +13,10 @@ export interface OnboardingLifestyle {
   noiseLevel?: string;
   communication?: string;
   petFriendly?: string;
+  // Backend hard-filters matches on these - no equivalent quiz question existed before.
+  seekingType?: string;
+  smokerOk?: string;
+  hasPets?: string;
 }
 
 export interface OnboardingData {
@@ -26,6 +30,10 @@ export interface OnboardingData {
   photos?: string[];
   interests?: string[];
   lifestyle?: OnboardingLifestyle;
+  // Backend Profile hard-filters matches on budget overlap and city - collected in AboutYouScreen.
+  city?: string;
+  budgetMin?: string;
+  budgetMax?: string;
 }
 
 export type RootStackParamList = {
@@ -34,13 +42,15 @@ export type RootStackParamList = {
   Login: undefined;
   SignUp: undefined;
   ForgotPassword: undefined;
-  VerifyEmail: { email: string };
+  // mode 'signup' hits the real verify-email/resend endpoints and continues to onboarding;
+  // 'reset' (the forgot-password entry point) stays a mock - backend has no password-reset flow yet.
+  VerifyEmail: { email: string; fullName?: string; mode?: 'signup' | 'reset' };
   OnboardingAboutYou: { data: OnboardingData };
   OnboardingPhotos: { data: OnboardingData };
   OnboardingInterests: { data: OnboardingData };
   OnboardingLifestyle: { data: OnboardingData };
   OnboardingComplete: { data: OnboardingData };
-  Home: { email: string; name?: string };
+  Home: undefined;
   MyHostel: undefined;
   Verification: undefined;
   Settings: undefined;
@@ -52,7 +62,7 @@ export type RootStackParamList = {
   Notifications: undefined;
   Placeholder: { title: string; description?: string };
   MatchProfile: { matchId: string };
-  IndividualChat: { matchId: string };
+  IndividualChat: { matchId: string; otherUserName?: string };
   GroupChat: { hostelId: string; roomTypeId: string };
 };
 
@@ -70,7 +80,7 @@ export type ExploreStackParamList = {
 };
 
 export type MainTabParamList = {
-  HomeTab: { email: string; name?: string };
+  HomeTab: undefined;
   Explore: NavigatorScreenParams<ExploreStackParamList> | undefined;
   Chat: undefined;
   Matches: undefined;
