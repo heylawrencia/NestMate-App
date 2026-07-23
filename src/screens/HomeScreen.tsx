@@ -73,11 +73,7 @@ export default function HomeScreen({ navigation, route }: Props) {
       label: 'Invites',
       icon: 'ticket-outline' as const,
       color: colors.secondary,
-      onPress: () =>
-        navigation.navigate('Placeholder', {
-          title: 'Invites',
-          description: 'Room and roommate invites will show up here.',
-        }),
+      onPress: () => navigation.navigate('Invites'),
     },
   ];
 

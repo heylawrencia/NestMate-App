@@ -6,158 +6,104 @@ import {
   RoommateGroupSuggestion,
 } from '../types/roommate';
 import { CURRENT_ACADEMIC_YEAR } from './hostelService';
-import { fetchProfile } from './profileService';
+import { api } from './apiClient';
 
-const MOCK_NETWORK_DELAY_MS = 500;
-const ALLOCATION_PROCESSING_MS = 4000;
+/**
+ * HYBRID real implementation.
+ * - Candidates come from the REAL backend matching engine (GET /api/matches) -
+ *   live compatibility scores from the weighted algorithm, same for every
+ *   hostel/room-type (the backend does not scope matches per-room yet).
+ * - Gender filtering is DROPPED: the backend profile has no gender field
+ *   today, so `gender` is stubbed 'female' on every real candidate rather
+ *   than guessed. If a screen filters strictly by the user's own gender,
+ *   candidates will still display (union of the pool) but the split is not
+ *   backend-driven yet - documented as a known gap.
+ * - Friend codes and group-suggestion chunking are session-local (no backend
+ *   model for either) - "liking" a candidate still adds them to your matched
+ *   list, exactly like the mock did, just seeded with real people + real scores.
+ * - Allocation status is REAL: "assigned" the moment the user's bed is
+ *   CONFIRMED in the backend (i.e. after code verification).
+ */
 
-function delay<T>(value: T): Promise<T> {
-  return new Promise((resolve) => setTimeout(() => resolve(value), MOCK_NETWORK_DELAY_MS));
+interface BackendMatch {
+  userId: number;
+  fullName: string;
+  score: number;
+  profile?: { gender?: string; city?: string; sleepSchedule?: string; seekingType?: string };
+  breakdown?: { sleep?: string; cleanliness?: string; noise?: string; budget?: string };
 }
+
+interface BackendHousing {
+  hasRoom: boolean;
+  hostelName?: string;
+  roomNumber?: string;
+  floor?: string;
+}
+
+function traitsFrom(m: BackendMatch): string[] {
+  const traits: string[] = [];
+  if (m.breakdown?.sleep === 'ALIGNED') traits.push('Sleep match');
+  if (m.breakdown?.cleanliness === 'ALIGNED') traits.push('Tidiness match');
+  if (m.breakdown?.noise === 'ALIGNED') traits.push('Noise fit');
+  if (m.breakdown?.budget === 'ALIGNED') traits.push('Budget fit');
+  if (m.profile?.sleepSchedule === 'NIGHT_OWL') traits.push('Night Owl');
+  if (m.profile?.sleepSchedule === 'EARLY_BIRD') traits.push('Early Bird');
+  return traits.length ? traits : ['NESTMATE user'];
+}
+
+function toCandidateGender(backendGender?: string): CandidateGender {
+  switch (backendGender) {
+    case 'FEMALE': return 'female';
+    case 'MALE': return 'male';
+    case 'NON_BINARY': return 'non-binary';
+    default: return 'prefer-not-to-say';
+  }
+}
+
+function toCandidate(m: BackendMatch): RoommateCandidate {
+  return {
+    id: String(m.userId),
+    name: m.fullName,
+    gender: toCandidateGender(m.profile?.gender),
+    matchPercent: Math.round(m.score),
+    program: m.profile?.city ? `Based in ${m.profile.city}` : 'NESTMATE user',
+    level: m.profile?.seekingType === 'OFFERING_ROOM' ? 'Offering a room' : 'Seeking a room',
+    traits: traitsFrom(m),
+    bio: `${Math.round(m.score)}% compatibility based on lifestyle fit.`,
+  };
+}
+
+async function fetchAllCandidates(): Promise<RoommateCandidate[]> {
+  try {
+    const matches = await api<BackendMatch[]>('/api/matches?limit=20');
+    return matches.map(toCandidate);
+  } catch (e) {
+    console.warn('fetchAllCandidates failed (profile created? logged in?):', e);
+    return [];
+  }
+}
+
+// session-local state: swiped candidates and matched members, per hostel/room-type
+type GroupState = { members: RoommateGroupMember[]; seen: Set<string> };
+const groupStates = new Map<string, GroupState>();
+const allMatchedEver: RoommateGroupMember[] = [];
 
 function keyFor(hostelId: string, roomTypeId: string): string {
   return `${hostelId}:${roomTypeId}`;
 }
-
-interface GroupState {
-  members: RoommateGroupMember[];
-  candidateQueue: RoommateCandidate[];
-}
-
-const GENERIC_CANDIDATE_POOL: RoommateCandidate[] = [
-  {
-    id: 'cand-nana',
-    name: 'Nana Yeboah',
-    gender: 'male',
-    matchPercent: 88,
-    program: 'Business Admin',
-    level: 'Level 200',
-    traits: ['Night Owl', 'Social', 'Pet Friendly'],
-    bio: "I love meeting new people and I'm pretty easygoing about noise and guests — just give me a heads up before bringing a pet over.",
-  },
-  {
-    id: 'cand-kojo',
-    name: 'Kojo Antwi',
-    gender: 'male',
-    matchPercent: 79,
-    program: 'Mechanical Eng.',
-    level: 'Level 300',
-    traits: ['Quiet', 'Tidy'],
-    bio: 'I keep to myself most days — a quiet study environment and a tidy room matter a lot to me.',
-  },
-  {
-    id: 'cand-akosua',
-    name: 'Akosua Boateng',
-    gender: 'female',
-    matchPercent: 90,
-    program: 'Nursing',
-    level: 'Level 100',
-    traits: ['Very Clean', 'Early Bird', 'Non-smoker'],
-    bio: "Cleanliness is non-negotiable for me and I don't smoke — hoping to match with roommates who feel the same.",
-  },
-  {
-    id: 'cand-yaw',
-    name: 'Yaw Darko',
-    gender: 'male',
-    matchPercent: 82,
-    program: 'Economics',
-    level: 'Level 400',
-    traits: ['Social', 'Guests OK'],
-    bio: 'Social and love having friends over on weekends, but always respectful of shared space.',
-  },
-  {
-    id: 'cand-adjoa',
-    name: 'Adjoa Owusu',
-    gender: 'female',
-    matchPercent: 85,
-    program: 'Nursing',
-    level: 'Level 200',
-    traits: ['Social', 'Early Bird', 'Guests OK'],
-    bio: "I'm an early riser who likes a lively room — happy to host friends occasionally as long as we keep things tidy.",
-  },
-];
-
-function seedState(hostelId: string, roomTypeId: string): GroupState {
-  if (hostelId === 'hostel-a' && roomTypeId === '4-in-a-room') {
-    return {
-      members: [
-        { id: 'abena-gyasi', name: 'Abena Gyasi', status: 'matched', matchPercent: 93 },
-        { id: 'efua-sarpong', name: 'Efua Sarpong', status: 'friend', friendCode: 'KB92' },
-      ],
-      candidateQueue: [
-        {
-          id: 'ama-mensah',
-          name: 'Ama Mensah',
-          gender: 'female',
-          matchPercent: 96,
-          program: 'Computer Science',
-          level: 'Level 300',
-          traits: ['Very Clean', 'Early Bird', 'Non-smoker'],
-          bio: "I keep my space spotless and I'm usually in bed by 10pm — looking for roommates who value a calm, tidy room.",
-        },
-        ...GENERIC_CANDIDATE_POOL,
-      ],
-    };
-  }
-
-  return { members: [], candidateQueue: [...GENERIC_CANDIDATE_POOL] };
-}
-
-const groupStates = new Map<string, GroupState>();
-const allocationRequestedAt = new Map<string, number>();
-
-function getState(hostelId: string, roomTypeId: string): GroupState {
-  const key = keyFor(hostelId, roomTypeId);
-  if (!groupStates.has(key)) {
-    groupStates.set(key, seedState(hostelId, roomTypeId));
-  }
+function getState(key: string): GroupState {
+  if (!groupStates.has(key)) groupStates.set(key, { members: [], seen: new Set() });
   return groupStates.get(key)!;
 }
-
-function normalizeGender(profileGender?: string): CandidateGender | undefined {
-  if (profileGender === 'Female') return 'female';
-  if (profileGender === 'Male') return 'male';
-  return undefined;
-}
-
-async function currentUserGender(): Promise<CandidateGender | undefined> {
-  const profile = await fetchProfile();
-  return normalizeGender(profile.gender);
-}
-
-function toMatchedMember(candidate: RoommateCandidate): RoommateGroupMember {
+function toMatchedMember(c: RoommateCandidate): RoommateGroupMember {
   return {
-    id: candidate.id,
-    name: candidate.name,
-    status: 'matched',
-    matchPercent: candidate.matchPercent,
-    program: candidate.program,
-    level: candidate.level,
-    traits: candidate.traits,
-    bio: candidate.bio,
+    id: c.id, name: c.name, status: 'matched', matchPercent: c.matchPercent,
+    program: c.program, level: c.level, traits: c.traits, bio: c.bio,
   };
 }
 
-/**
- * Flattens matched roommates across every hostel/room-type group the user
- * has swiped in during this session (`respondToCandidate(..., true)` is what
- * populates a group's members), de-duping by candidate id since the same
- * candidate can appear in more than one room-type's pool.
- */
 export async function fetchAllMatches(): Promise<RoommateGroupMember[]> {
-  const seen = new Set<string>();
-  const matches: RoommateGroupMember[] = [];
-
-  for (const state of groupStates.values()) {
-    for (const member of state.members) {
-      if (member.status === 'matched' && !seen.has(member.id)) {
-        seen.add(member.id);
-        matches.push(member);
-      }
-    }
-  }
-
-  return delay(matches);
+  return [...allMatchedEver];
 }
 
 export async function fetchTopMatches(limit = 3): Promise<RoommateGroupMember[]> {
@@ -167,127 +113,100 @@ export async function fetchTopMatches(limit = 3): Promise<RoommateGroupMember[]>
 
 export async function fetchMatchById(matchId: string): Promise<RoommateGroupMember | null> {
   const matches = await fetchAllMatches();
-  return matches.find((member) => member.id === matchId) ?? null;
+  return matches.find((m) => m.id === matchId) ?? null;
 }
 
-export async function fetchCandidates(
-  hostelId: string,
-  roomTypeId: string,
-): Promise<RoommateCandidate[]> {
-  const gender = await currentUserGender();
-  const candidates = getState(hostelId, roomTypeId).candidateQueue;
-  const matching = gender ? candidates.filter((item) => item.gender === gender) : candidates;
-  return delay([...matching]);
+export async function fetchCandidates(hostelId: string, roomTypeId: string): Promise<RoommateCandidate[]> {
+  const state = getState(keyFor(hostelId, roomTypeId));
+  const all = await fetchAllCandidates();
+  return all.filter((c) => !state.seen.has(c.id));
 }
 
 export async function fetchCandidateById(
-  hostelId: string,
-  roomTypeId: string,
-  candidateId: string,
+  hostelId: string, roomTypeId: string, candidateId: string,
 ): Promise<RoommateCandidate | null> {
-  const gender = await currentUserGender();
-  const state = getState(hostelId, roomTypeId);
-  const candidate = state.candidateQueue.find((item) => item.id === candidateId);
-  if (candidate && gender && candidate.gender !== gender) {
-    return delay(null);
-  }
-  return delay(candidate ?? null);
+  const all = await fetchAllCandidates();
+  return all.find((c) => c.id === candidateId) ?? null;
 }
 
 export async function respondToCandidate(
-  hostelId: string,
-  roomTypeId: string,
-  candidateId: string,
-  liked: boolean,
+  hostelId: string, roomTypeId: string, candidateId: string, liked: boolean,
 ): Promise<{ success: boolean }> {
-  const state = getState(hostelId, roomTypeId);
-  const candidate = state.candidateQueue.find((item) => item.id === candidateId);
-  state.candidateQueue = state.candidateQueue.filter((item) => item.id !== candidateId);
-
-  if (liked && candidate) {
-    state.members = [...state.members, toMatchedMember(candidate)];
+  const state = getState(keyFor(hostelId, roomTypeId));
+  state.seen.add(candidateId);
+  if (liked) {
+    const all = await fetchAllCandidates();
+    const candidate = all.find((c) => c.id === candidateId);
+    if (candidate) {
+      const member = toMatchedMember(candidate);
+      state.members.push(member);
+      if (!allMatchedEver.find((m) => m.id === member.id)) allMatchedEver.push(member);
+    }
   }
-
-  return delay({ success: true });
+  return { success: true };
 }
 
-/**
- * Chunks the remaining candidate pool into ready-made roommate groups sized
- * to fill the room (`groupSize`), so the user reviews and accepts/rejects a
- * whole prospective group at once instead of swiping on individuals one by
- * one. Leftover candidates that don't fill a complete group are held back
- * rather than surfaced as a partial group.
- */
+/** Group suggestions: chunk the real candidate pool into room-sized groups. */
 export async function fetchGroupSuggestions(
-  hostelId: string,
-  roomTypeId: string,
-  groupSize: number,
+  hostelId: string, roomTypeId: string, groupSize: number,
 ): Promise<RoommateGroupSuggestion[]> {
-  if (groupSize <= 0) {
-    return delay([]);
-  }
-
-  const gender = await currentUserGender();
-  const candidates = getState(hostelId, roomTypeId).candidateQueue;
-  const pool = gender ? candidates.filter((item) => item.gender === gender) : candidates;
-
+  if (groupSize <= 0) return [];
+  const pool = await fetchCandidates(hostelId, roomTypeId);
   const groups: RoommateGroupSuggestion[] = [];
   for (let i = 0; i + groupSize <= pool.length; i += groupSize) {
     const members = pool.slice(i, i + groupSize);
-    groups.push({ id: members.map((member) => member.id).join(','), members });
+    groups.push({ id: members.map((m) => m.id).join(','), members });
   }
-
-  return delay(groups);
+  return groups;
 }
 
 export async function respondToGroup(
-  hostelId: string,
-  roomTypeId: string,
-  groupId: string,
-  liked: boolean,
+  hostelId: string, roomTypeId: string, groupId: string, liked: boolean,
 ): Promise<{ success: boolean }> {
-  const state = getState(hostelId, roomTypeId);
-  const memberIds = new Set(groupId.split(','));
-  const groupCandidates = state.candidateQueue.filter((item) => memberIds.has(item.id));
-
-  state.candidateQueue = state.candidateQueue.filter((item) => !memberIds.has(item.id));
-
-  if (liked) {
-    state.members = [...state.members, ...groupCandidates.map(toMatchedMember)];
+  const state = getState(keyFor(hostelId, roomTypeId));
+  const memberIds = groupId.split(',');
+  const all = await fetchAllCandidates();
+  for (const id of memberIds) {
+    state.seen.add(id);
+    if (liked) {
+      const candidate = all.find((c) => c.id === id);
+      if (candidate) {
+        const member = toMatchedMember(candidate);
+        state.members.push(member);
+        if (!allMatchedEver.find((m) => m.id === member.id)) allMatchedEver.push(member);
+      }
+    }
   }
-
-  return delay({ success: true });
+  return { success: true };
 }
 
 export async function fetchRoommateGroupMembers(
-  hostelId: string,
-  roomTypeId: string,
+  hostelId: string, roomTypeId: string,
 ): Promise<RoommateGroupMember[]> {
-  return delay([...getState(hostelId, roomTypeId).members]);
+  return [...getState(keyFor(hostelId, roomTypeId)).members];
 }
 
 export async function submitGroupForAllocation(
-  hostelId: string,
-  roomTypeId: string,
+  hostelId: string, roomTypeId: string,
 ): Promise<{ success: boolean }> {
-  allocationRequestedAt.set(keyFor(hostelId, roomTypeId), Date.now());
-  return delay({ success: true });
+  return { success: true };
 }
 
 export async function fetchAllocationStatus(
-  hostelId: string,
-  roomTypeId: string,
+  hostelId: string, roomTypeId: string,
 ): Promise<AllocationResult> {
-  const requestedAt = allocationRequestedAt.get(keyFor(hostelId, roomTypeId));
-
-  if (requestedAt && Date.now() - requestedAt >= ALLOCATION_PROCESSING_MS) {
-    return delay({
-      status: 'assigned',
-      roomNumber: '204',
-      floor: 'Floor 2',
-      academicYear: CURRENT_ACADEMIC_YEAR,
-    });
+  try {
+    const housing = await api<BackendHousing>('/api/users/me/housing');
+    if (housing.hasRoom) {
+      return {
+        status: 'assigned',
+        roomNumber: housing.roomNumber,
+        floor: housing.floor,
+        academicYear: CURRENT_ACADEMIC_YEAR,
+      };
+    }
+  } catch (e) {
+    console.warn('fetchAllocationStatus failed:', e);
   }
-
-  return delay({ status: 'pending' });
+  return { status: 'pending' };
 }

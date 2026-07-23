@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -19,25 +19,45 @@ import { colors, spacing, typography } from '../theme';
 import { RootStackParamList } from '../navigation/types';
 import { useAsyncData } from '../hooks/useAsyncData';
 import { fetchMatchById } from '../services/roommateService';
-import { fetchMessages, sendMessage } from '../services/chatService';
+import { ChatMessage } from '../types/chat';
+import { fetchThreadMessages, sendThreadMessage, subscribeToThread } from '../services/chatService';
 import { ChatListItem, buildChatListItems, formatMessageTime } from '../utils/chatFormatting';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'IndividualChat'>;
 
 const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
 
+function mergeMessage(list: ChatMessage[], incoming: ChatMessage): ChatMessage[] {
+  if (list.some((m) => m.id === incoming.id)) return list;
+  return [...list, incoming].sort((a, b) => a.sentAt - b.sentAt);
+}
+
 export default function IndividualChatScreen({ navigation, route }: Props) {
-  const { matchId } = route.params;
+  const { matchId, name } = route.params;
   const { data: match } = useAsyncData(() => fetchMatchById(matchId), [matchId]);
-  const { data: messages, reload: reloadMessages } = useAsyncData(() => fetchMessages(matchId), [matchId]);
+  const { data: initialMessages, reload: reloadMessages } = useAsyncData(
+    () => fetchThreadMessages(matchId),
+    [matchId],
+  );
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    if (initialMessages) setMessages(initialMessages);
+  }, [initialMessages]);
 
   useFocusEffect(
     useCallback(() => {
       reloadMessages();
     }, [reloadMessages]),
   );
+
+  useEffect(() => {
+    return subscribeToThread(matchId, (message) => {
+      setMessages((prev) => mergeMessage(prev, message));
+    });
+  }, [matchId]);
 
   async function handleSend() {
     const text = draft.trim();
@@ -46,8 +66,8 @@ export default function IndividualChatScreen({ navigation, route }: Props) {
     }
     setSending(true);
     setDraft('');
-    await sendMessage(matchId, text);
-    await reloadMessages();
+    const sent = await sendThreadMessage(matchId, text);
+    setMessages((prev) => mergeMessage(prev, sent));
     setSending(false);
   }
 
@@ -73,8 +93,9 @@ export default function IndividualChatScreen({ navigation, route }: Props) {
     );
   }
 
-  const firstName = match?.name.split(' ')[0] ?? '';
-  const listItems = buildChatListItems(messages ?? []);
+  const displayName = match?.name ?? name ?? 'Roommate';
+  const firstName = displayName.split(' ')[0] ?? '';
+  const listItems = buildChatListItems(messages);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -94,11 +115,11 @@ export default function IndividualChatScreen({ navigation, route }: Props) {
           onPress={() => navigation.navigate('MatchProfile', { matchId })}
         >
           <IconCircle size={36} backgroundColor={colors.primaryLight}>
-            <Text style={styles.avatarInitial}>{(match?.name ?? '?').charAt(0).toUpperCase()}</Text>
+            <Text style={styles.avatarInitial}>{displayName.charAt(0).toUpperCase()}</Text>
           </IconCircle>
           <View>
             <Text style={styles.headerName} numberOfLines={1}>
-              {match?.name ?? 'Roommate'}
+              {displayName}
             </Text>
             {match?.matchPercent != null ? (
               <Text style={styles.headerSubtitle}>{match.matchPercent}% match</Text>

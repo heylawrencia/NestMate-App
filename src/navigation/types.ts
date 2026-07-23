@@ -17,6 +17,8 @@ export interface OnboardingLifestyle {
 
 export interface OnboardingData {
   email: string;
+  /** Carried through onboarding only to create the real account at the end - never persisted client-side beyond this. */
+  password: string;
   fullName?: string;
   dateOfBirth?: string;
   bio?: string;
@@ -34,13 +36,15 @@ export type RootStackParamList = {
   Login: undefined;
   SignUp: undefined;
   ForgotPassword: undefined;
-  VerifyEmail: { email: string };
+  VerifyEmail: { email: string; name?: string };
   OnboardingAboutYou: { data: OnboardingData };
   OnboardingPhotos: { data: OnboardingData };
   OnboardingInterests: { data: OnboardingData };
   OnboardingLifestyle: { data: OnboardingData };
   OnboardingComplete: { data: OnboardingData };
   Home: { email: string; name?: string };
+  ManagerDashboard: { email: string };
+  Invites: undefined;
   MyHostel: undefined;
   Verification: undefined;
   Settings: undefined;
@@ -52,16 +56,18 @@ export type RootStackParamList = {
   Notifications: undefined;
   Placeholder: { title: string; description?: string };
   MatchProfile: { matchId: string };
-  IndividualChat: { matchId: string };
+  IndividualChat: { matchId: string; name?: string };
   GroupChat: { hostelId: string; roomTypeId: string };
 };
 
 export type ExploreStackParamList = {
   ExploreList: undefined;
   HostelDetail: { hostelId: string };
-  AccessCode: { hostelId: string };
-  CodeVerified: { hostelId: string; code: string };
+  AccessCode: { hostelId: string; roomTypeId?: string };
+  CodeVerified: { hostelId: string; code: string; roomTypeId?: string };
   ChooseRoomType: { hostelId: string };
+  PickRoom: { hostelId: string; roomTypeId: string };
+  HoldPending: { hostelId: string; roomTypeId: string };
   FindRoommates: { hostelId: string; roomTypeId: string };
   RoommateMatching: { hostelId: string; roomTypeId: string };
   RoommateProfile: { hostelId: string; roomTypeId: string; candidateId: string };

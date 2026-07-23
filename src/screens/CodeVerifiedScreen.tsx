@@ -24,7 +24,7 @@ type Props = CompositeScreenProps<
 >;
 
 export default function CodeVerifiedScreen({ navigation, route }: Props) {
-  const { hostelId, code } = route.params;
+  const { hostelId, code, roomTypeId } = route.params;
   const { data: hostel, loading, error, reload } = useAsyncData(
     () => fetchHostelById(hostelId),
     [hostelId],
@@ -55,7 +55,7 @@ export default function CodeVerifiedScreen({ navigation, route }: Props) {
 
                 <Text style={styles.title}>Code verified!</Text>
                 <Text style={styles.subtitle}>
-                  Your payment is confirmed. You can now start your room allocation.
+                  Your payment is confirmed. Your bed is officially yours.
                 </Text>
               </View>
 
@@ -88,8 +88,12 @@ export default function CodeVerifiedScreen({ navigation, route }: Props) {
               </View>
 
               <AppButton
-                title="Choose your room type"
-                onPress={() => navigation.navigate('ChooseRoomType', { hostelId })}
+                title="View your room"
+                onPress={() =>
+                  roomTypeId
+                    ? navigation.navigate('Allocation', { hostelId, roomTypeId })
+                    : navigation.navigate('ExploreList')
+                }
               />
             </ElevatedCard>
           ) : (

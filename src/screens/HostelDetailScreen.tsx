@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CompositeScreenProps } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -102,17 +102,18 @@ export default function HostelDetailScreen({ navigation, route }: Props) {
                 </View>
               </ElevatedCard>
 
-              <ElevatedCard style={styles.paidCallout}>
-                <Ionicons name="lock-closed-outline" size={18} color={colors.textMuted} />
-                <Text style={styles.paidCalloutText}>
-                  Paid at this hostel? Enter your access code to start allocation
-                </Text>
-              </ElevatedCard>
-
               <AppButton
-                title="I've paid — enter code"
-                onPress={() => navigation.navigate('AccessCode', { hostelId })}
+                title="Choose a room"
+                onPress={() => navigation.navigate('ChooseRoomType', { hostelId })}
               />
+
+              <TouchableOpacity
+                style={styles.secondaryLink}
+                onPress={() => navigation.navigate('AccessCode', { hostelId })}
+              >
+                <Ionicons name="lock-closed-outline" size={16} color={colors.textMuted} />
+                <Text style={styles.secondaryLinkText}>Already paid? Enter your access code</Text>
+              </TouchableOpacity>
             </View>
           </ScrollView>
         ) : (
@@ -264,15 +265,14 @@ const styles = StyleSheet.create({
     fontWeight: typography.weightBold,
     color: colors.text,
   },
-  paidCallout: {
+  secondaryLink: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-    padding: spacing.md,
-    marginBottom: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.md,
   },
-  paidCalloutText: {
-    flex: 1,
+  secondaryLinkText: {
     fontSize: typography.caption,
     color: colors.textMuted,
   },

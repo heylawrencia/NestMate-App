@@ -33,7 +33,7 @@ type Props = CompositeScreenProps<
 const CODE_LENGTH = 6;
 
 export default function AccessCodeScreen({ navigation, route }: Props) {
-  const { hostelId } = route.params;
+  const { hostelId, roomTypeId } = route.params;
   const { data: hostel, loading, error, reload } = useAsyncData(
     () => fetchHostelById(hostelId),
     [hostelId],
@@ -56,7 +56,7 @@ export default function AccessCodeScreen({ navigation, route }: Props) {
     setVerifying(false);
 
     if (result.success) {
-      navigation.navigate('CodeVerified', { hostelId, code });
+      navigation.navigate('CodeVerified', { hostelId, code, roomTypeId });
     } else {
       setFormError('That code doesn’t look right. Check your receipt and try again.');
     }

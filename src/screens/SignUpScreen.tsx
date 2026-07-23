@@ -37,7 +37,6 @@ export default function SignUpScreen({ navigation }: Props) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
-  const [loading, setLoading] = useState(false);
 
   function validate(): boolean {
     const nextErrors: FormErrors = {};
@@ -46,6 +45,8 @@ export default function SignUpScreen({ navigation }: Props) {
       nextErrors.email = 'Email is required.';
     } else if (!EMAIL_REGEX.test(email.trim())) {
       nextErrors.email = 'Enter a valid email address.';
+    } else if (!email.trim().toLowerCase().endsWith('@gmail.com')) {
+      nextErrors.email = 'Please sign up with a real Gmail address.';
     }
 
     if (!password) {
@@ -66,16 +67,11 @@ export default function SignUpScreen({ navigation }: Props) {
     return Object.keys(nextErrors).length === 0;
   }
 
-  async function handleSignUp() {
+  function handleSignUp() {
     if (!validate()) {
       return;
     }
-
-    setLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    setLoading(false);
-
-    navigation.navigate('OnboardingAboutYou', { data: { email: email.trim() } });
+    navigation.navigate('OnboardingAboutYou', { data: { email: email.trim(), password } });
   }
 
   return (
@@ -164,7 +160,7 @@ export default function SignUpScreen({ navigation }: Props) {
             </TouchableOpacity>
             {errors.terms ? <Text style={styles.formError}>{errors.terms}</Text> : null}
 
-            <AppButton title="Sign Up" onPress={handleSignUp} loading={loading} />
+            <AppButton title="Sign Up" onPress={handleSignUp} />
 
             <View style={styles.logInRow}>
               <Text style={styles.logInText}>Already have an account? </Text>

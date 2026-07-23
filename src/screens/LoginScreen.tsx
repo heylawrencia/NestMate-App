@@ -35,6 +35,7 @@ export default function LoginScreen({ navigation }: Props) {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [formError, setFormError] = useState<string | undefined>();
+  const [needsVerification, setNeedsVerification] = useState(false);
   const [loading, setLoading] = useState(false);
 
   function validate(): boolean {
@@ -58,6 +59,7 @@ export default function LoginScreen({ navigation }: Props) {
 
   async function handleLogin() {
     setFormError(undefined);
+    setNeedsVerification(false);
 
     if (!validate()) {
       return;
@@ -68,10 +70,15 @@ export default function LoginScreen({ navigation }: Props) {
     setLoading(false);
 
     if (result.success) {
-      await updateProfile({ email: email.trim() });
-      navigation.reset({ index: 0, routes: [{ name: 'Home', params: { email: email.trim() } }] });
+      if (result.user?.role === 'MANAGER') {
+        navigation.reset({ index: 0, routes: [{ name: 'ManagerDashboard', params: { email: email.trim() } }] });
+      } else {
+        await updateProfile({ email: email.trim() });
+        navigation.reset({ index: 0, routes: [{ name: 'Home', params: { email: email.trim() } }] });
+      }
     } else {
       setFormError(result.errorMessage ?? 'Something went wrong. Please try again.');
+      setNeedsVerification(Boolean(result.needsVerification));
     }
   }
 
@@ -135,6 +142,15 @@ export default function LoginScreen({ navigation }: Props) {
             </TouchableOpacity>
 
             {formError ? <Text style={styles.formError}>{formError}</Text> : null}
+            {needsVerification ? (
+              <View style={styles.verifyPrompt}>
+                <AppButton
+                  title="Verify your email"
+                  variant="outline"
+                  onPress={() => navigation.navigate('VerifyEmail', { email: email.trim() })}
+                />
+              </View>
+            ) : null}
 
             <AppButton title="Log In" onPress={handleLogin} loading={loading} />
 
@@ -201,6 +217,9 @@ const styles = StyleSheet.create({
     fontSize: typography.caption,
     marginBottom: spacing.md,
     textAlign: 'center',
+  },
+  verifyPrompt: {
+    marginBottom: spacing.md,
   },
   divider: {
     flexDirection: 'row',

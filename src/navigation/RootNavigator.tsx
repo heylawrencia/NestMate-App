@@ -14,6 +14,8 @@ import InterestsScreen from '../screens/onboarding/InterestsScreen';
 import LifestyleFitScreen from '../screens/onboarding/LifestyleFitScreen';
 import OnboardingCompleteScreen from '../screens/onboarding/OnboardingCompleteScreen';
 import MainTabNavigator from './MainTabNavigator';
+import ManagerDashboardScreen from '../screens/ManagerDashboardScreen';
+import InvitesScreen from '../screens/InvitesScreen';
 import MyHostelScreen from '../screens/MyHostelScreen';
 import VerificationScreen from '../screens/VerificationScreen';
 import SettingsScreen from '../screens/SettingsScreen';
@@ -45,6 +47,8 @@ export default function RootNavigator() {
       <Stack.Screen name="OnboardingLifestyle" component={LifestyleFitScreen} />
       <Stack.Screen name="OnboardingComplete" component={OnboardingCompleteScreen} />
       <Stack.Screen name="Home" component={MainTabNavigator} />
+      <Stack.Screen name="ManagerDashboard" component={ManagerDashboardScreen} />
+      <Stack.Screen name="Invites" component={InvitesScreen} />
       <Stack.Screen name="MyHostel" component={MyHostelScreen} />
       <Stack.Screen name="Verification" component={VerificationScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
