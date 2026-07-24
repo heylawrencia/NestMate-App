@@ -54,6 +54,7 @@ export type RootStackParamList = {
   About: undefined;
   HelpSupport: undefined;
   EditProfile: undefined;
+  Preferences: undefined;
   Notifications: undefined;
   Placeholder: { title: string; description?: string };
   MatchProfile: { matchId: string };

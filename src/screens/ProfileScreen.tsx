@@ -77,16 +77,12 @@ export default function ProfileScreen({ navigation }: Props) {
                 <ListRow
                   label="Personal Info"
                   icon="person-outline"
-                  onPress={() =>
-                    navigation.navigate('Placeholder', { title: 'Personal Info' })
-                  }
+                  onPress={() => navigation.navigate('EditProfile')}
                 />
                 <ListRow
                   label="Preferences"
                   icon="options-outline"
-                  onPress={() =>
-                    navigation.navigate('Placeholder', { title: 'Preferences' })
-                  }
+                  onPress={() => navigation.navigate('Preferences')}
                 />
                 <ListRow
                   label="Photos"

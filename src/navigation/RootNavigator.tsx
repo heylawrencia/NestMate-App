@@ -25,6 +25,7 @@ import PrivacyScreen from '../screens/PrivacyScreen';
 import AboutScreen from '../screens/AboutScreen';
 import HelpSupportScreen from '../screens/HelpSupportScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
+import PreferencesScreen from '../screens/PreferencesScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import PlaceholderScreen from '../screens/PlaceholderScreen';
 import MatchProfileScreen from '../screens/MatchProfileScreen';
@@ -59,6 +60,7 @@ export default function RootNavigator() {
       <Stack.Screen name="About" component={AboutScreen} />
       <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+      <Stack.Screen name="Preferences" component={PreferencesScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="Placeholder" component={PlaceholderScreen} />
       <Stack.Screen name="MatchProfile" component={MatchProfileScreen} />
