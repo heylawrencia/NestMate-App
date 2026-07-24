@@ -8,29 +8,60 @@ function delay<T>(value: T): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(value), MOCK_NETWORK_DELAY_MS));
 }
 
-/**
- * Mock in-memory profile store standing in for a real profile API.
- * `updateProfile` mutates this so Edit Profile's changes are reflected
- * back on the My Profile screen within the session.
- *
- * STILL MOCKED: dateOfBirth, gender, schoolLevel, avatarUri and photos have
- * no home in the backend today (neither User nor Profile has these columns),
- * so EditProfileScreen/ProfileScreen/AccountScreen stay on this mock until
- * that schema decision is made. `createLifestyleProfile` below is the real,
- * backend-backed one - it saves the separate lifestyle/matching profile.
- */
-let mockProfile: UserProfile = {
-  fullName: '',
-  bio: '',
+// ---------- Real profile (GET/PUT /api/profiles/me) ----------
+// One backend endpoint serves both this identity-level editor (name/DOB/bio/
+// gender/school/avatar) and the lifestyle/matching profile below (sleep
+// schedule, cleanliness, etc.) - each PUT only sends the fields it owns, and
+// the backend only overwrites fields that are actually present in the body.
+
+interface BackendMyProfile {
+  userId: number;
+  email: string;
+  fullName: string;
+  avatarUri: string | null;
+  gender: string | null;
+  dateOfBirth: string | null;
+  bio: string | null;
+  schoolLevel: string | null;
+}
+
+const GENDER_DISPLAY: Record<string, string> = {
+  FEMALE: 'Female',
+  MALE: 'Male',
+  NON_BINARY: 'Non-binary',
+  PREFER_NOT_TO_SAY: 'Prefer not to say',
 };
 
+function toUserProfile(p: BackendMyProfile): UserProfile {
+  return {
+    fullName: p.fullName,
+    email: p.email,
+    dateOfBirth: p.dateOfBirth ?? undefined,
+    bio: p.bio ?? undefined,
+    gender: p.gender ? GENDER_DISPLAY[p.gender] : undefined,
+    schoolLevel: p.schoolLevel ?? undefined,
+    avatarUri: p.avatarUri ?? undefined,
+  };
+}
+
 export async function fetchProfile(): Promise<UserProfile> {
-  return delay({ ...mockProfile });
+  const p = await api<BackendMyProfile>('/api/profiles/me');
+  return toUserProfile(p);
 }
 
 export async function updateProfile(update: UserProfileUpdate): Promise<UserProfile> {
-  mockProfile = { ...mockProfile, ...update };
-  return delay({ ...mockProfile });
+  const p = await api<BackendMyProfile>('/api/profiles/me', {
+    method: 'PUT',
+    body: {
+      fullName: update.fullName,
+      dateOfBirth: update.dateOfBirth ? update.dateOfBirth.slice(0, 10) : undefined,
+      bio: update.bio,
+      gender: update.gender !== undefined ? mapGender(update.gender) : undefined,
+      schoolLevel: update.schoolLevel,
+      avatarUri: update.avatarUri,
+    },
+  });
+  return toUserProfile(p);
 }
 
 // ---------- Real lifestyle/matching profile (PUT /api/profiles/me) ----------
@@ -117,6 +148,9 @@ export async function createLifestyleProfile(
         hasPets: false,
         petsOk: data.lifestyle?.petFriendly !== 'No',
         seekingType: 'SEEKING_ROOM',
+        dateOfBirth: data.dateOfBirth ? data.dateOfBirth.slice(0, 10) : undefined,
+        schoolLevel: data.schoolLevel,
+        avatarUri: data.avatarUri ?? data.photos?.[0],
       },
     });
     return { success: true };
