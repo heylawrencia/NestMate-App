@@ -1,5 +1,5 @@
-import React from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -12,14 +12,24 @@ import { colors, spacing, typography } from '../theme';
 import { RootStackParamList } from '../navigation/types';
 import { useAsyncData } from '../hooks/useAsyncData';
 import { fetchProfile } from '../services/profileService';
+import { forgotPassword } from '../services/authService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Account'>;
 
 export default function AccountScreen({ navigation }: Props) {
   const { data: profile, loading, error, reload } = useAsyncData(fetchProfile, []);
+  const [sendingCode, setSendingCode] = useState(false);
 
   function handleLogOut() {
     navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+  }
+
+  async function handleChangePassword() {
+    if (!profile?.email || sendingCode) return;
+    setSendingCode(true);
+    await forgotPassword(profile.email);
+    setSendingCode(false);
+    navigation.navigate('ResetPassword', { email: profile.email });
   }
 
   return (
@@ -44,13 +54,11 @@ export default function AccountScreen({ navigation }: Props) {
             <DetailRow
               icon="lock-closed-outline"
               title="Change password"
+              subtitle={sendingCode ? 'Sending code...' : undefined}
               isLast
-              onPress={() =>
-                navigation.navigate('Placeholder', {
-                  title: 'Change password',
-                  description: 'Changing your password from the app will be available soon.',
-                })
-              }
+              disabled={sendingCode}
+              onPress={handleChangePassword}
+              right={sendingCode ? <ActivityIndicator color={colors.textMuted} /> : undefined}
             />
           </ElevatedCard>
 
