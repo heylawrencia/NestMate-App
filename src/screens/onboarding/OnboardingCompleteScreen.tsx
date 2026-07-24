@@ -20,6 +20,8 @@ export default function OnboardingCompleteScreen({ navigation, route }: Props) {
   const [status, setStatus] = useState<Status>('saving');
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
 
+  const [needsVerification, setNeedsVerification] = useState(true);
+
   async function createAccount() {
     setStatus('saving');
     setErrorMessage(undefined);
@@ -30,6 +32,8 @@ export default function OnboardingCompleteScreen({ navigation, route }: Props) {
       setErrorMessage(result.errorMessage);
       return;
     }
+
+    setNeedsVerification(result.requiresVerification !== false);
 
     // Non-fatal: the account exists either way: the matching profile can be
     // finished later from Edit Profile if this fails.
@@ -82,10 +86,17 @@ export default function OnboardingCompleteScreen({ navigation, route }: Props) {
             </View>
 
             <View style={styles.form}>
-              <AppButton
-                title="Verify your email"
-                onPress={() => navigation.navigate('VerifyEmail', { email: data.email, name: data.fullName })}
-              />
+              {needsVerification ? (
+                <AppButton
+                  title="Verify your email"
+                  onPress={() => navigation.navigate('VerifyEmail', { email: data.email, name: data.fullName })}
+                />
+              ) : (
+                <AppButton
+                  title="Get Started"
+                  onPress={() => navigation.replace('Home', { email: data.email, name: data.fullName })}
+                />
+              )}
             </View>
           </>
         )}

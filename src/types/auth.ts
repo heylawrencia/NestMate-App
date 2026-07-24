@@ -2,6 +2,7 @@ export interface AuthUser {
   userId: number;
   email: string;
   role?: 'STUDENT' | 'MANAGER';
+  verified?: boolean;
 }
 
 export interface LoginResult {

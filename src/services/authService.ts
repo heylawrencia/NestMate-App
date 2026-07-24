@@ -53,7 +53,9 @@ export async function register(
     return {
       success: true,
       token: res.token,
-      user: { userId: res.userId, email: res.email, role: res.role },
+      user: { userId: res.userId, email: res.email, role: res.role, verified: res.verified },
+      requiresVerification: !res.verified,
+      needsVerification: !res.verified,
     };
   } catch (e) {
     const message =
