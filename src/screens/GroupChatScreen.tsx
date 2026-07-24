@@ -20,7 +20,7 @@ import { RootStackParamList } from '../navigation/types';
 import { useAsyncData } from '../hooks/useAsyncData';
 import { fetchHostelById, getRoomType } from '../services/hostelService';
 import { fetchRoommateGroupMembers } from '../services/roommateService';
-import { fetchMessages, sendMessage } from '../services/chatService';
+import { fetchGroupMessages, sendGroupMessage } from '../services/chatService';
 import { ChatListItem, buildChatListItems, formatMessageTime, joinWithAnd } from '../utils/chatFormatting';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'GroupChat'>;
@@ -38,7 +38,7 @@ export default function GroupChatScreen({ navigation, route }: Props) {
     () => fetchRoommateGroupMembers(hostelId, roomTypeId),
     [hostelId, roomTypeId],
   );
-  const { data: messages, reload: reloadMessages } = useAsyncData(() => fetchMessages(threadId), [threadId]);
+  const { data: messages, reload: reloadMessages } = useAsyncData(() => fetchGroupMessages(threadId), [threadId]);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
 
@@ -55,7 +55,7 @@ export default function GroupChatScreen({ navigation, route }: Props) {
     }
     setSending(true);
     setDraft('');
-    await sendMessage(threadId, text);
+    await sendGroupMessage(threadId, text);
     await reloadMessages();
     setSending(false);
   }

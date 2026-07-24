@@ -1,7 +1,17 @@
-import { apiClient, ApiError } from './apiClient';
-import { AuthUser, LoginResult } from '../types/auth';
+import { LoginResult } from '../types/auth';
+import { api, ApiError, setToken } from './apiClient';
 
-interface AuthApiResponse {
+/**
+ * REAL implementation - calls the NESTMATE Spring Boot backend.
+ * Seeded demo accounts (password: password123):
+ *   ama@seed.nestmate.com · kojo@seed.nestmate.com
+ *   abena@seed.nestmate.com · yaw@seed.nestmate.com
+ *
+ * Registration requires a @gmail.com address, and login is blocked until the
+ * emailed code is verified (see verifyEmail below) - both enforced server-side.
+ */
+
+interface BackendAuthResponse {
   userId: number;
   email: string;
   token: string;
@@ -9,55 +19,87 @@ interface AuthApiResponse {
   verified: boolean;
 }
 
-interface SimpleResult {
-  success: boolean;
-  errorMessage?: string;
-}
-
-function toErrorMessage(err: unknown): string {
-  return err instanceof ApiError ? err.message : 'Something went wrong. Please try again.';
-}
-
-async function authRequest(path: string, body: unknown): Promise<LoginResult> {
+export async function login(email: string, password: string): Promise<LoginResult> {
   try {
-    const response = await apiClient.post<AuthApiResponse>(path, body);
-    const user: AuthUser = { userId: response.userId, email: response.email };
-    return { success: true, user, token: response.token };
-  } catch (err) {
-    // Login throws 403 only when the account's email isn't verified yet (AuthService.login).
-    if (err instanceof ApiError && err.status === 403) {
-      return { success: false, errorMessage: err.message, requiresVerification: true };
-    }
-    return { success: false, errorMessage: toErrorMessage(err) };
+    const res = await api<BackendAuthResponse>('/api/auth/login', {
+      method: 'POST',
+      body: { email, password },
+    });
+    setToken(res.token);
+    return { success: true, user: { email: res.email, role: res.role } };
+  } catch (e) {
+    const message =
+      e instanceof ApiError ? e.message : 'Cannot reach the server. Is the backend running?';
+    const needsVerification = e instanceof ApiError && e.status === 403 && /verify/i.test(e.message);
+    return { success: false, errorMessage: message, needsVerification };
   }
 }
 
-export function login(email: string, password: string): Promise<LoginResult> {
-  return authRequest('/api/auth/login', { email, password });
-}
-
-export function register(
+export async function register(
   email: string,
   password: string,
   fullName: string,
 ): Promise<LoginResult> {
-  return authRequest('/api/auth/register', { email, password, fullName });
-}
-
-export async function verifyEmail(email: string, code: string): Promise<SimpleResult> {
   try {
-    await apiClient.post('/api/auth/verify-email', { email, code });
-    return { success: true };
-  } catch (err) {
-    return { success: false, errorMessage: toErrorMessage(err) };
+    const res = await api<BackendAuthResponse>('/api/auth/register', {
+      method: 'POST',
+      body: { email, password, fullName },
+    });
+    setToken(res.token);
+    return { success: true, user: { email: res.email } };
+  } catch (e) {
+    const message =
+      e instanceof ApiError ? e.message : 'Cannot reach the server. Is the backend running?';
+    return { success: false, errorMessage: message };
   }
 }
 
-export async function resendVerification(email: string): Promise<SimpleResult> {
+export function logout() {
+  setToken(null);
+}
+
+/** Sets the account's verified flag - required before login will succeed. */
+export async function verifyEmail(email: string, code: string): Promise<LoginResult> {
   try {
-    await apiClient.post('/api/auth/resend-verification', { email });
+    await api('/api/auth/verify-email', { method: 'POST', body: { email, code } });
     return { success: true };
-  } catch (err) {
-    return { success: false, errorMessage: toErrorMessage(err) };
+  } catch (e) {
+    const message = e instanceof ApiError ? e.message : 'Could not verify. Check your connection.';
+    return { success: false, errorMessage: message };
+  }
+}
+
+export async function resendVerification(email: string): Promise<LoginResult> {
+  try {
+    await api('/api/auth/resend-verification', { method: 'POST', body: { email } });
+    return { success: true };
+  } catch (e) {
+    const message = e instanceof ApiError ? e.message : 'Could not resend. Check your connection.';
+    return { success: false, errorMessage: message };
+  }
+}
+
+/** Always succeeds from the caller's side - the backend never reveals whether the email is registered. */
+export async function forgotPassword(email: string): Promise<LoginResult> {
+  try {
+    await api('/api/auth/forgot-password', { method: 'POST', body: { email } });
+    return { success: true };
+  } catch (e) {
+    const message = e instanceof ApiError ? e.message : 'Could not send reset code. Check your connection.';
+    return { success: false, errorMessage: message };
+  }
+}
+
+export async function resetPassword(
+  email: string,
+  code: string,
+  newPassword: string,
+): Promise<LoginResult> {
+  try {
+    await api('/api/auth/reset-password', { method: 'POST', body: { email, code, newPassword } });
+    return { success: true };
+  } catch (e) {
+    const message = e instanceof ApiError ? e.message : 'Could not reset password. Check your connection.';
+    return { success: false, errorMessage: message };
   }
 }

@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -17,7 +17,7 @@ import AppButton from '../components/AppButton';
 import ScreenHeader from '../components/ScreenHeader';
 import { colors, spacing, typography } from '../theme';
 import { RootStackParamList } from '../navigation/types';
-import { useAuth } from '../context/AuthContext';
+import * as authService from '../services/authService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
@@ -29,12 +29,12 @@ interface FormErrors {
 }
 
 export default function LoginScreen({ navigation }: Props) {
-  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [formError, setFormError] = useState<string | undefined>();
+  const [needsVerification, setNeedsVerification] = useState(false);
   const [loading, setLoading] = useState(false);
 
   function validate(): boolean {
@@ -58,21 +58,25 @@ export default function LoginScreen({ navigation }: Props) {
 
   async function handleLogin() {
     setFormError(undefined);
+    setNeedsVerification(false);
 
     if (!validate()) {
       return;
     }
 
     setLoading(true);
-    const result = await login(email.trim(), password);
+    const result = await authService.login(email.trim(), password);
     setLoading(false);
 
     if (result.success) {
-      navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
-    } else if (result.requiresVerification) {
-      navigation.navigate('VerifyEmail', { email: email.trim(), mode: 'signup' });
+      if (result.user?.role === 'MANAGER') {
+        navigation.reset({ index: 0, routes: [{ name: 'ManagerDashboard', params: { email: email.trim() } }] });
+      } else {
+        navigation.reset({ index: 0, routes: [{ name: 'Home', params: { email: email.trim() } }] });
+      }
     } else {
       setFormError(result.errorMessage ?? 'Something went wrong. Please try again.');
+      setNeedsVerification(Boolean(result.needsVerification));
     }
   }
 
@@ -136,6 +140,15 @@ export default function LoginScreen({ navigation }: Props) {
             </TouchableOpacity>
 
             {formError ? <Text style={styles.formError}>{formError}</Text> : null}
+            {needsVerification ? (
+              <View style={styles.verifyPrompt}>
+                <AppButton
+                  title="Verify your email"
+                  variant="outline"
+                  onPress={() => navigation.navigate('VerifyEmail', { email: email.trim() })}
+                />
+              </View>
+            ) : null}
 
             <AppButton title="Log In" onPress={handleLogin} loading={loading} />
 
@@ -202,6 +215,9 @@ const styles = StyleSheet.create({
     fontSize: typography.caption,
     marginBottom: spacing.md,
     textAlign: 'center',
+  },
+  verifyPrompt: {
+    marginBottom: spacing.md,
   },
   divider: {
     flexDirection: 'row',

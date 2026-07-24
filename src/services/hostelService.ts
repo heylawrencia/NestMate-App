@@ -1,17 +1,23 @@
-import { apiClient } from './apiClient';
-import { Hostel, HostelCategory, HostelSearchFilters, RoomType, VerifyAccessCodeResult } from '../types/hostel';
+import {
+  Hostel,
+  HostelCategory,
+  HostelSearchFilters,
+  HoldView,
+  RoomSummary,
+  RoomType,
+  VerifyAccessCodeResult,
+} from '../types/hostel';
+import { api, ApiError } from './apiClient';
 
 export const CURRENT_ACADEMIC_YEAR = '2026/27';
-
-type BackendHostelKind = 'HOSTEL' | 'APARTMENT';
 
 interface BackendHostelSummary {
   hostelId: number;
   name: string;
   area: string;
-  photoUrl: string | null;
+  photoUrl?: string;
   rating: number;
-  kind: BackendHostelKind;
+  kind: 'HOSTEL' | 'APARTMENT';
   fromPricePerYear: number;
   bedsAvailable: number;
 }
@@ -23,72 +29,103 @@ interface BackendRoomTypeInfo {
   bedsAvailable: number;
 }
 
-interface BackendHostelDetail {
-  hostelId: number;
-  name: string;
-  description: string;
-  area: string;
-  photoUrl: string | null;
-  rating: number;
-  kind: BackendHostelKind;
+interface BackendHostelDetail extends Omit<BackendHostelSummary, 'fromPricePerYear' | 'bedsAvailable'> {
+  description?: string;
   roomTypes: BackendRoomTypeInfo[];
 }
 
-function toCategory(kind: BackendHostelKind): HostelCategory {
-  return kind === 'APARTMENT' ? 'Apartments' : 'Hostels';
+interface BackendHoldView {
+  holdId: number;
+  bedId: number;
+  roomLabel: string;
+  hostelName: string;
+  amount: number;
+  expiresAt: string;
+  status: string;
 }
 
-function toKind(category: HostelCategory): BackendHostelKind {
-  return category === 'Apartments' ? 'APARTMENT' : 'HOSTEL';
+interface BackendBed {
+  bedId: number;
+  status: 'FREE' | 'HELD' | 'CONFIRMED';
 }
 
-function toRoomType(info: BackendRoomTypeInfo): RoomType {
+interface BackendRoomSummary {
+  roomId: number;
+  label: string;
+  capacity: number;
+  beds: BackendBed[];
+  myAvgCompatibility: number | null;
+}
+
+function toHoldView(h: BackendHoldView): HoldView {
   return {
-    id: String(info.roomTypeId),
-    label: `${info.capacity}-in-a-room`,
-    pricePerYear: info.pricePerBedPerYear,
-    capacity: info.capacity,
-    bedsLeft: info.bedsAvailable,
+    holdId: String(h.holdId),
+    bedId: String(h.bedId),
+    roomLabel: h.roomLabel,
+    hostelName: h.hostelName,
+    amount: h.amount,
+    expiresAt: h.expiresAt,
+    status: h.status,
   };
 }
 
-function toHostelSummary(summary: BackendHostelSummary): Hostel {
+function toRoomSummary(r: BackendRoomSummary): RoomSummary {
+  const freeBed = r.beds.find((b) => b.status === 'FREE');
   return {
-    id: String(summary.hostelId),
-    name: summary.name,
-    // No backend equivalent for these decorative fields - best-effort defaults so
-    // existing UI (which treats them as required) doesn't need optional-chaining.
-    shortName: summary.name,
-    category: toCategory(summary.kind),
-    location: summary.area,
-    distanceNote: '',
-    rating: summary.rating,
-    bedsAvailable: summary.bedsAvailable,
-    fromPricePerYear: summary.fromPricePerYear,
-    imageUrl: summary.photoUrl ?? undefined,
+    id: String(r.roomId),
+    label: r.label,
+    capacity: r.capacity,
+    bedsAvailable: r.beds.filter((b) => b.status === 'FREE').length,
+    myAvgCompatibility: r.myAvgCompatibility,
+    freeBedId: freeBed ? String(freeBed.bedId) : undefined,
+  };
+}
+
+function toCategory(kind: 'HOSTEL' | 'APARTMENT'): HostelCategory {
+  return kind === 'APARTMENT' ? 'Apartments' : 'Hostels';
+}
+
+function toRoomType(rt: BackendRoomTypeInfo): RoomType {
+  return {
+    id: String(rt.roomTypeId),
+    label: `${rt.capacity} in a room`,
+    pricePerYear: rt.pricePerBedPerYear,
+    capacity: rt.capacity,
+    bedsLeft: rt.bedsAvailable,
+  };
+}
+
+function summaryToHostel(h: BackendHostelSummary): Hostel {
+  return {
+    id: String(h.hostelId),
+    name: h.name,
+    shortName: h.name.split(' ')[0],
+    category: toCategory(h.kind),
+    location: h.area,
+    distanceNote: h.area,
+    rating: h.rating,
+    bedsAvailable: h.bedsAvailable,
+    fromPricePerYear: h.fromPricePerYear,
+    imageUrl: h.photoUrl,
     amenities: [],
     roomTypes: [],
   };
 }
 
-function toHostelDetail(detail: BackendHostelDetail): Hostel {
-  const roomTypes = detail.roomTypes.map(toRoomType);
-  const bedsAvailable = roomTypes.reduce((sum, roomType) => sum + roomType.bedsLeft, 0);
-  const fromPricePerYear = roomTypes.length
-    ? Math.min(...roomTypes.map((roomType) => roomType.pricePerYear))
-    : 0;
-
+function detailToHostel(h: BackendHostelDetail): Hostel {
+  const roomTypes = h.roomTypes.map(toRoomType);
+  const prices = roomTypes.map((rt) => rt.pricePerYear);
   return {
-    id: String(detail.hostelId),
-    name: detail.name,
-    shortName: detail.name,
-    category: toCategory(detail.kind),
-    location: detail.area,
-    distanceNote: '',
-    rating: detail.rating,
-    bedsAvailable,
-    fromPricePerYear,
-    imageUrl: detail.photoUrl ?? undefined,
+    id: String(h.hostelId),
+    name: h.name,
+    shortName: h.name.split(' ')[0],
+    category: toCategory(h.kind),
+    location: h.area,
+    distanceNote: h.area,
+    rating: h.rating,
+    bedsAvailable: roomTypes.reduce((sum, rt) => sum + rt.bedsLeft, 0),
+    fromPricePerYear: prices.length ? Math.min(...prices) : 0,
+    imageUrl: h.photoUrl,
     amenities: [],
     roomTypes,
   };
@@ -96,23 +133,77 @@ function toHostelDetail(detail: BackendHostelDetail): Hostel {
 
 export async function fetchHostels(filters: HostelSearchFilters = {}): Promise<Hostel[]> {
   const params = new URLSearchParams();
-  if (filters.query?.trim()) {
-    params.set('search', filters.query.trim());
+  if (filters.query?.trim()) params.set('search', filters.query.trim());
+  if (filters.category) params.set('kind', filters.category === 'Apartments' ? 'APARTMENT' : 'HOSTEL');
+  const qs = params.toString();
+  try {
+    const list = await api<BackendHostelSummary[]>(`/api/hostels${qs ? `?${qs}` : ''}`);
+    return list.map(summaryToHostel);
+  } catch (e) {
+    console.warn('fetchHostels failed (are you logged in?):', e);
+    return [];
   }
-  if (filters.category) {
-    params.set('kind', toKind(filters.category));
-  }
-  const query = params.toString();
-  const summaries = await apiClient.get<BackendHostelSummary[]>(`/api/hostels${query ? `?${query}` : ''}`);
-  return summaries.map(toHostelSummary);
 }
 
 export async function fetchHostelById(hostelId: string): Promise<Hostel | null> {
   try {
-    const detail = await apiClient.get<BackendHostelDetail>(`/api/hostels/${hostelId}`);
-    return toHostelDetail(detail);
-  } catch {
+    const detail = await api<BackendHostelDetail>(`/api/hostels/${hostelId}`);
+    return detailToHostel(detail);
+  } catch (e) {
+    console.warn('fetchHostelById failed:', e);
     return null;
+  }
+}
+
+/** Rooms of a given type in a hostel, with compatibility against current occupants. */
+export async function fetchRoomsForType(hostelId: string, roomTypeId: string): Promise<RoomSummary[]> {
+  try {
+    const list = await api<BackendRoomSummary[]>(
+      `/api/hostels/${hostelId}/rooms?roomTypeId=${roomTypeId}`,
+    );
+    return list.map(toRoomSummary);
+  } catch (e) {
+    console.warn('fetchRoomsForType failed:', e);
+    return [];
+  }
+}
+
+/** Starts a 48-hour hold on a bed. Throws ApiError if it was just taken. */
+export async function holdBed(bedId: string): Promise<HoldView> {
+  const hold = await api<BackendHoldView>(`/api/beds/${bedId}/hold`, { method: 'POST' });
+  return toHoldView(hold);
+}
+
+/** The caller's active hold, or null if they don't have one (never had one, paid, cancelled, or expired). */
+export async function fetchMyHold(): Promise<HoldView | null> {
+  try {
+    const hold = await api<BackendHoldView>('/api/holds/me');
+    return toHoldView(hold);
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) return null;
+    console.warn('fetchMyHold failed:', e);
+    return null;
+  }
+}
+
+export async function cancelHold(holdId: string): Promise<void> {
+  await api(`/api/holds/${holdId}`, { method: 'DELETE' });
+}
+
+export async function verifyAccessCode(
+  hostelId: string,
+  code: string,
+): Promise<VerifyAccessCodeResult> {
+  try {
+    const hold = await api<BackendHoldView>('/api/holds/me');
+    await api(`/api/holds/${hold.holdId}/confirm-code`, {
+      method: 'POST',
+      body: { code: code.trim().toUpperCase() },
+    });
+    return { success: true };
+  } catch (e) {
+    if (e instanceof ApiError) console.warn('verifyAccessCode:', e.message);
+    return { success: false };
   }
 }
 
@@ -129,12 +220,6 @@ export function getRoomTypeSummary(hostel: Hostel): string {
   return hostel.roomTypes
     .map((roomType) => roomType.label.match(/^\d+/)?.[0] ?? roomType.label)
     .join(' · ');
-}
-
-// AccessCode/CodeVerified screens are reworked in Phase 2 to hit the real
-// hold-confirmation endpoint; this stays a stub until that lands.
-export async function verifyAccessCode(hostelId: string, code: string): Promise<VerifyAccessCodeResult> {
-  return { success: Boolean(hostelId) && code.length === 6 };
 }
 
 export function formatAccessCode(code: string): string {

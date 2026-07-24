@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import SelectField from './SelectField';
@@ -47,6 +47,16 @@ export default function DateOfBirthField({
   const [day, setDay] = useState<number | undefined>(value?.getDate());
   const [month, setMonth] = useState<number | undefined>(value?.getMonth());
   const [year, setYear] = useState<number | undefined>(value?.getFullYear());
+
+  // `value` often arrives after mount (async profile load) - useState's
+  // initializer only runs once, so pick up later changes here too.
+  useEffect(() => {
+    if (value) {
+      setDay(value.getDate());
+      setMonth(value.getMonth());
+      setYear(value.getFullYear());
+    }
+  }, [value]);
 
   function commit(nextDay?: number, nextMonth?: number, nextYear?: number) {
     setDay(nextDay);

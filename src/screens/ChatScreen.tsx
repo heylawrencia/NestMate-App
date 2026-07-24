@@ -1,22 +1,20 @@
 import React, { useCallback } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { FlatList, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { CompositeScreenProps, useFocusEffect } from '@react-navigation/native';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import AsyncBoundary from '../components/AsyncBoundary';
-import Badge from '../components/Badge';
 import EmptyState from '../components/EmptyState';
 import GradientHeader from '../components/GradientHeader';
 import HeaderIconRow from '../components/HeaderIconRow';
 import IconCircle from '../components/IconCircle';
+import Badge from '../components/Badge';
 import { colors, spacing, typography } from '../theme';
 import { MainTabParamList, RootStackParamList } from '../navigation/types';
-import { useAsyncData } from '../hooks/useAsyncData';
-import { fetchConversations } from '../services/conversationService';
-import { ConversationSummary } from '../types/chat';
 import { useDrawer } from '../context/DrawerContext';
+import { useAsyncData } from '../hooks/useAsyncData';
+import { ConversationSummary, fetchConversations } from '../services/chatService';
+import { formatMessageTime } from '../utils/chatFormatting';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabParamList, 'Chat'>,
@@ -25,7 +23,7 @@ type Props = CompositeScreenProps<
 
 export default function ChatScreen({ navigation }: Props) {
   const { openDrawer } = useDrawer();
-  const { data: conversations, loading, error, reload } = useAsyncData(fetchConversations, []);
+  const { data: conversations, reload } = useAsyncData(fetchConversations, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -41,28 +39,33 @@ export default function ChatScreen({ navigation }: Props) {
         onPress={() =>
           navigation.navigate('IndividualChat', {
             matchId: String(item.otherUserId),
-            otherUserName: item.otherUserName,
+            name: item.otherUserName,
           })
         }
       >
-        <IconCircle size={48} backgroundColor={colors.primaryLight}>
+        <IconCircle size={44} backgroundColor={colors.primaryLight}>
           <Text style={styles.avatarInitial}>{item.otherUserName.charAt(0).toUpperCase()}</Text>
         </IconCircle>
-        <View style={styles.textGroup}>
-          <Text style={styles.name} numberOfLines={1}>
-            {item.otherUserName}
-          </Text>
-          <Text style={styles.preview} numberOfLines={1}>
-            {item.lastMessage}
-          </Text>
+        <View style={styles.rowText}>
+          <View style={styles.rowHeader}>
+            <Text style={styles.name} numberOfLines={1}>
+              {item.otherUserName}
+            </Text>
+            <Text style={styles.time}>{formatMessageTime(new Date(item.lastMessageAt).getTime())}</Text>
+          </View>
+          <View style={styles.rowFooter}>
+            <Text style={styles.preview} numberOfLines={1}>
+              {item.lastMessage}
+            </Text>
+            {item.unreadCount > 0 ? <Badge label={String(item.unreadCount)} tone="success" /> : null}
+          </View>
         </View>
-        {item.unreadCount > 0 ? <Badge label={String(item.unreadCount)} tone="success" /> : null}
       </TouchableOpacity>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
+    <SafeAreaView style={styles.safeArea}>
       <GradientHeader>
         <HeaderIconRow
           onMenuPress={openDrawer}
@@ -70,22 +73,20 @@ export default function ChatScreen({ navigation }: Props) {
         />
         <Text style={styles.header}>Chat</Text>
       </GradientHeader>
-
-      <AsyncBoundary loading={loading} error={error} onRetry={reload}>
+      {conversations && conversations.length > 0 ? (
         <FlatList
-          data={conversations ?? []}
+          data={conversations}
           keyExtractor={(item) => String(item.otherUserId)}
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
-          ListEmptyComponent={
-            <EmptyState
-              icon="chatbubble-outline"
-              title="No conversations yet"
-              description="Once you match with a roommate, you'll be able to chat here."
-            />
-          }
         />
-      </AsyncBoundary>
+      ) : (
+        <EmptyState
+          icon="chatbubble-outline"
+          title="No conversations yet"
+          description="Once you match with a roommate, you'll be able to chat here."
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -101,14 +102,13 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
   listContent: {
-    flexGrow: 1,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: spacing.sm,
     paddingVertical: spacing.sm,
   },
   avatarInitial: {
@@ -116,17 +116,34 @@ const styles = StyleSheet.create({
     fontWeight: typography.weightBold,
     color: colors.primary,
   },
-  textGroup: {
+  rowText: {
     flex: 1,
+  },
+  rowHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   name: {
     fontSize: typography.body,
     fontWeight: typography.weightBold,
     color: colors.text,
+    flexShrink: 1,
+  },
+  time: {
+    fontSize: typography.caption,
+    color: colors.textMuted,
+  },
+  rowFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 2,
   },
   preview: {
     fontSize: typography.caption,
     color: colors.textMuted,
-    marginTop: 2,
+    flex: 1,
+    marginRight: spacing.sm,
   },
 });

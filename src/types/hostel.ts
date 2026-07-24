@@ -33,3 +33,24 @@ export interface HostelSearchFilters {
 export interface VerifyAccessCodeResult {
   success: boolean;
 }
+
+export interface RoomSummary {
+  id: string;
+  label: string;
+  capacity: number;
+  bedsAvailable: number;
+  /** Average compatibility with current occupants, 0-100. Null for an empty room. */
+  myAvgCompatibility: number | null;
+  /** First free bed in this room, if any - what gets held when the room is picked. */
+  freeBedId?: string;
+}
+
+export interface HoldView {
+  holdId: string;
+  bedId: string;
+  roomLabel: string;
+  hostelName: string;
+  amount: number;
+  expiresAt: string;
+  status: string;
+}

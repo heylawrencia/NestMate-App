@@ -7,6 +7,12 @@ export interface UserProfile {
   schoolLevel?: string;
   avatarUri?: string;
   photos?: string[];
+  sleepSchedule?: string;
+  cleanliness?: string;
+  noiseLevel?: string;
+  socialEnergy?: string;
+  smoking?: string;
+  petFriendly?: string;
 }
 
 export type UserProfileUpdate = Partial<UserProfile>;

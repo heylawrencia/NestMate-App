@@ -7,6 +7,7 @@ import GetStartedScreen from '../screens/GetStartedScreen';
 import LoginScreen from '../screens/LoginScreen';
 import SignUpScreen from '../screens/SignUpScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
+import ResetPasswordScreen from '../screens/ResetPasswordScreen';
 import VerifyEmailScreen from '../screens/VerifyEmailScreen';
 import AboutYouScreen from '../screens/onboarding/AboutYouScreen';
 import UploadPhotosScreen from '../screens/onboarding/UploadPhotosScreen';
@@ -14,6 +15,8 @@ import InterestsScreen from '../screens/onboarding/InterestsScreen';
 import LifestyleFitScreen from '../screens/onboarding/LifestyleFitScreen';
 import OnboardingCompleteScreen from '../screens/onboarding/OnboardingCompleteScreen';
 import MainTabNavigator from './MainTabNavigator';
+import ManagerDashboardScreen from '../screens/ManagerDashboardScreen';
+import InvitesScreen from '../screens/InvitesScreen';
 import MyHostelScreen from '../screens/MyHostelScreen';
 import VerificationScreen from '../screens/VerificationScreen';
 import SettingsScreen from '../screens/SettingsScreen';
@@ -22,6 +25,7 @@ import PrivacyScreen from '../screens/PrivacyScreen';
 import AboutScreen from '../screens/AboutScreen';
 import HelpSupportScreen from '../screens/HelpSupportScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
+import PreferencesScreen from '../screens/PreferencesScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import PlaceholderScreen from '../screens/PlaceholderScreen';
 import MatchProfileScreen from '../screens/MatchProfileScreen';
@@ -38,6 +42,7 @@ export default function RootNavigator() {
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="SignUp" component={SignUpScreen} />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+      <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
       <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
       <Stack.Screen name="OnboardingAboutYou" component={AboutYouScreen} />
       <Stack.Screen name="OnboardingPhotos" component={UploadPhotosScreen} />
@@ -45,6 +50,8 @@ export default function RootNavigator() {
       <Stack.Screen name="OnboardingLifestyle" component={LifestyleFitScreen} />
       <Stack.Screen name="OnboardingComplete" component={OnboardingCompleteScreen} />
       <Stack.Screen name="Home" component={MainTabNavigator} />
+      <Stack.Screen name="ManagerDashboard" component={ManagerDashboardScreen} />
+      <Stack.Screen name="Invites" component={InvitesScreen} />
       <Stack.Screen name="MyHostel" component={MyHostelScreen} />
       <Stack.Screen name="Verification" component={VerificationScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
@@ -53,6 +60,7 @@ export default function RootNavigator() {
       <Stack.Screen name="About" component={AboutScreen} />
       <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+      <Stack.Screen name="Preferences" component={PreferencesScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="Placeholder" component={PlaceholderScreen} />
       <Stack.Screen name="MatchProfile" component={MatchProfileScreen} />

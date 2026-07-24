@@ -13,14 +13,12 @@ export interface OnboardingLifestyle {
   noiseLevel?: string;
   communication?: string;
   petFriendly?: string;
-  // Backend hard-filters matches on these - no equivalent quiz question existed before.
-  seekingType?: string;
-  smokerOk?: string;
-  hasPets?: string;
 }
 
 export interface OnboardingData {
   email: string;
+  /** Carried through onboarding only to create the real account at the end - never persisted client-side beyond this. */
+  password: string;
   fullName?: string;
   dateOfBirth?: string;
   bio?: string;
@@ -30,10 +28,6 @@ export interface OnboardingData {
   photos?: string[];
   interests?: string[];
   lifestyle?: OnboardingLifestyle;
-  // Backend Profile hard-filters matches on budget overlap and city - collected in AboutYouScreen.
-  city?: string;
-  budgetMin?: string;
-  budgetMax?: string;
 }
 
 export type RootStackParamList = {
@@ -42,15 +36,16 @@ export type RootStackParamList = {
   Login: undefined;
   SignUp: undefined;
   ForgotPassword: undefined;
-  // mode 'signup' hits the real verify-email/resend endpoints and continues to onboarding;
-  // 'reset' (the forgot-password entry point) stays a mock - backend has no password-reset flow yet.
-  VerifyEmail: { email: string; fullName?: string; mode?: 'signup' | 'reset' };
+  ResetPassword: { email: string };
+  VerifyEmail: { email: string; name?: string };
   OnboardingAboutYou: { data: OnboardingData };
   OnboardingPhotos: { data: OnboardingData };
   OnboardingInterests: { data: OnboardingData };
   OnboardingLifestyle: { data: OnboardingData };
   OnboardingComplete: { data: OnboardingData };
-  Home: undefined;
+  Home: { email: string; name?: string };
+  ManagerDashboard: { email: string };
+  Invites: undefined;
   MyHostel: undefined;
   Verification: undefined;
   Settings: undefined;
@@ -59,19 +54,22 @@ export type RootStackParamList = {
   About: undefined;
   HelpSupport: undefined;
   EditProfile: undefined;
+  Preferences: undefined;
   Notifications: undefined;
   Placeholder: { title: string; description?: string };
   MatchProfile: { matchId: string };
-  IndividualChat: { matchId: string; otherUserName?: string };
+  IndividualChat: { matchId: string; name?: string };
   GroupChat: { hostelId: string; roomTypeId: string };
 };
 
 export type ExploreStackParamList = {
   ExploreList: undefined;
   HostelDetail: { hostelId: string };
-  AccessCode: { hostelId: string };
-  CodeVerified: { hostelId: string; code: string };
+  AccessCode: { hostelId: string; roomTypeId?: string };
+  CodeVerified: { hostelId: string; code: string; roomTypeId?: string };
   ChooseRoomType: { hostelId: string };
+  PickRoom: { hostelId: string; roomTypeId: string };
+  HoldPending: { hostelId: string; roomTypeId: string };
   FindRoommates: { hostelId: string; roomTypeId: string };
   RoommateMatching: { hostelId: string; roomTypeId: string };
   RoommateProfile: { hostelId: string; roomTypeId: string; candidateId: string };
@@ -80,7 +78,7 @@ export type ExploreStackParamList = {
 };
 
 export type MainTabParamList = {
-  HomeTab: undefined;
+  HomeTab: { email: string; name?: string };
   Explore: NavigatorScreenParams<ExploreStackParamList> | undefined;
   Chat: undefined;
   Matches: undefined;

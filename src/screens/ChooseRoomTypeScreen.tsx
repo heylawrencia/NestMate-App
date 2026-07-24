@@ -22,8 +22,6 @@ type Props = CompositeScreenProps<
   NativeStackScreenProps<RootStackParamList>
 >;
 
-const FEATURED_ROOM_TYPE_ID = '4-in-a-room';
-
 export default function ChooseRoomTypeScreen({ navigation, route }: Props) {
   const { hostelId } = route.params;
   const { data: hostel, loading, error, reload } = useAsyncData(
@@ -32,9 +30,7 @@ export default function ChooseRoomTypeScreen({ navigation, route }: Props) {
   );
   const { openDrawer } = useDrawer();
 
-  const [selectedRoomTypeId, setSelectedRoomTypeId] = useState<string | undefined>(
-    FEATURED_ROOM_TYPE_ID,
-  );
+  const [selectedRoomTypeId, setSelectedRoomTypeId] = useState<string | undefined>();
 
   function renderRoomTypeRow(roomType: RoomType) {
     const isFull = roomType.bedsLeft === 0;
@@ -70,7 +66,7 @@ export default function ChooseRoomTypeScreen({ navigation, route }: Props) {
     if (!selectedRoomTypeId) {
       return;
     }
-    navigation.navigate('FindRoommates', { hostelId, roomTypeId: selectedRoomTypeId });
+    navigation.navigate('PickRoom', { hostelId, roomTypeId: selectedRoomTypeId });
   }
 
   return (
@@ -89,11 +85,11 @@ export default function ChooseRoomTypeScreen({ navigation, route }: Props) {
           {hostel ? (
             <>
               <View style={styles.verifiedBadge}>
-                <Ionicons name="checkmark-circle" size={16} color={colors.success} />
-                <Text style={styles.verifiedText}>Code verified · {hostel.shortName}</Text>
+                <Ionicons name="business-outline" size={16} color={colors.success} />
+                <Text style={styles.verifiedText}>{hostel.shortName}</Text>
               </View>
 
-              <Text style={styles.subtitle}>What did you pay for?</Text>
+              <Text style={styles.subtitle}>What room size do you want?</Text>
 
               <View style={styles.roomTypeList}>{hostel.roomTypes.map(renderRoomTypeRow)}</View>
 

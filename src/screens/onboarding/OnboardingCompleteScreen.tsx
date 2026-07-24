@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Animated, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -8,73 +7,88 @@ import AppButton from '../../components/AppButton';
 import IconCircle from '../../components/IconCircle';
 import { colors, spacing, typography } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
-import { ApiError } from '../../services/apiClient';
-import { buildProfileRequest, saveMyProfile } from '../../services/profileService';
+import { register } from '../../services/authService';
+import { createLifestyleProfile } from '../../services/profileService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OnboardingComplete'>;
+
+type Status = 'saving' | 'error' | 'done';
 
 export default function OnboardingCompleteScreen({ navigation, route }: Props) {
   const { data } = route.params;
   const progress = useRef(new Animated.Value(0)).current;
-  const [saveError, setSaveError] = useState<string | undefined>();
+  const [status, setStatus] = useState<Status>('saving');
+  const [errorMessage, setErrorMessage] = useState<string | undefined>();
 
-  async function saveProfile() {
-    setSaveError(undefined);
-    const request = buildProfileRequest(data);
-    if (!request) {
-      setSaveError('Something went wrong building your profile. Please go back and check your answers.');
+  async function createAccount() {
+    setStatus('saving');
+    setErrorMessage(undefined);
+
+    const result = await register(data.email, data.password, data.fullName ?? '');
+    if (!result.success) {
+      setStatus('error');
+      setErrorMessage(result.errorMessage);
       return;
     }
-    try {
-      await saveMyProfile(request);
-    } catch (err) {
-      setSaveError(err instanceof ApiError ? err.message : 'Could not save your profile. Please try again.');
+
+    // Non-fatal: the account exists either way: the matching profile can be
+    // finished later from Edit Profile if this fails.
+    const profileResult = await createLifestyleProfile(data);
+    if (!profileResult.success) {
+      console.warn('createLifestyleProfile failed:', profileResult.errorMessage);
     }
+
+    setStatus('done');
+    Animated.timing(progress, { toValue: 1, duration: 1400, useNativeDriver: false }).start();
   }
 
   useEffect(() => {
-    Animated.timing(progress, {
-      toValue: 1,
-      duration: 1400,
-      useNativeDriver: false,
-    }).start();
-
-    saveProfile();
-  }, [progress]);
+    createAccount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const progressWidth = progress.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.content}>
-        <IconCircle size={96} style={styles.iconCircle}>
-          <Ionicons name="checkmark" size={40} color={colors.primary} />
-        </IconCircle>
+        {status === 'error' ? (
+          <>
+            <IconCircle size={96} backgroundColor="#F4E5E5" style={styles.iconCircle}>
+              <Ionicons name="alert-circle-outline" size={40} color={colors.error} />
+            </IconCircle>
+            <Text style={styles.title}>Couldn&apos;t create your account</Text>
+            <Text style={styles.subtitle}>{errorMessage ?? 'Something went wrong.'}</Text>
+            <View style={styles.form}>
+              <AppButton title="Try again" onPress={createAccount} />
+            </View>
+          </>
+        ) : status === 'saving' ? (
+          <>
+            <ActivityIndicator size="large" color={colors.primary} style={styles.iconCircle} />
+            <Text style={styles.title}>Setting up your account…</Text>
+            <Text style={styles.subtitle}>This only takes a moment.</Text>
+          </>
+        ) : (
+          <>
+            <IconCircle size={96} style={styles.iconCircle}>
+              <Ionicons name="checkmark" size={40} color={colors.primary} />
+            </IconCircle>
+            <Text style={styles.title}>You&apos;re all set!</Text>
+            <Text style={styles.subtitle}>We&apos;re finding the best roommates for you.</Text>
 
-        <Text style={styles.title}>You&apos;re all set!</Text>
-        <Text style={styles.subtitle}>We&apos;re finding the best roommates for you.</Text>
+            <View style={styles.progressTrack}>
+              <Animated.View style={[styles.progressFill, { width: progressWidth }]} />
+            </View>
 
-        <View style={styles.progressTrack}>
-          <Animated.View style={[styles.progressFill, { width: progressWidth }]} />
-        </View>
-
-        {saveError ? <Text style={styles.errorText}>{saveError}</Text> : null}
-
-        <View style={styles.form}>
-          {saveError ? (
-            <AppButton title="Try Again" onPress={saveProfile} />
-          ) : (
-            <AppButton
-              title="Go to Home"
-              onPress={() =>
-                navigation.reset({
-                  index: 0,
-                  routes: [{ name: 'Home' }],
-                })
-              }
-            />
-          )}
-        </View>
+            <View style={styles.form}>
+              <AppButton
+                title="Verify your email"
+                onPress={() => navigation.navigate('VerifyEmail', { email: data.email, name: data.fullName })}
+              />
+            </View>
+          </>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -99,6 +113,7 @@ const styles = StyleSheet.create({
     fontWeight: typography.weightBold,
     color: colors.text,
     marginBottom: spacing.sm,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: typography.body,
@@ -121,11 +136,5 @@ const styles = StyleSheet.create({
   },
   form: {
     width: '100%',
-  },
-  errorText: {
-    color: colors.error,
-    fontSize: typography.caption,
-    textAlign: 'center',
-    marginBottom: spacing.md,
   },
 });

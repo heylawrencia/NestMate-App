@@ -89,7 +89,7 @@ export default function NotificationsScreen({ navigation }: Props) {
           <EmptyState
             icon="notifications-off-outline"
             title="Nothing yet"
-            description="Matches, group updates, and your room allocation will appear here"
+            description="New messages and your room allocation will appear here"
           />
         )}
       </AsyncBoundary>

@@ -1,14 +1,14 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -17,28 +17,35 @@ import ChatComposer from '../components/ChatComposer';
 import IconCircle from '../components/IconCircle';
 import { colors, spacing, typography } from '../theme';
 import { RootStackParamList } from '../navigation/types';
-import { useAuth } from '../context/AuthContext';
 import { useAsyncData } from '../hooks/useAsyncData';
-import { fetchConversationMessages, sendConversationMessage } from '../services/conversationService';
-import { subscribeToConversation } from '../services/chatSocket';
+import { fetchMatchById } from '../services/roommateService';
 import { ChatMessage } from '../types/chat';
+import { fetchThreadMessages, sendThreadMessage, subscribeToThread } from '../services/chatService';
 import { ChatListItem, buildChatListItems, formatMessageTime } from '../utils/chatFormatting';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'IndividualChat'>;
 
 const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
 
+function mergeMessage(list: ChatMessage[], incoming: ChatMessage): ChatMessage[] {
+  if (list.some((m) => m.id === incoming.id)) return list;
+  return [...list, incoming].sort((a, b) => a.sentAt - b.sentAt);
+}
+
 export default function IndividualChatScreen({ navigation, route }: Props) {
-  const { matchId, otherUserName } = route.params;
-  const otherUserId = Number(matchId);
-  const { userId, token } = useAuth();
-  const { data: messages, reload: reloadMessages } = useAsyncData(
-    () => fetchConversationMessages(otherUserId),
-    [otherUserId],
+  const { matchId, name } = route.params;
+  const { data: match } = useAsyncData(() => fetchMatchById(matchId), [matchId]);
+  const { data: initialMessages, reload: reloadMessages } = useAsyncData(
+    () => fetchThreadMessages(matchId),
+    [matchId],
   );
-  const [liveMessages, setLiveMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    if (initialMessages) setMessages(initialMessages);
+  }, [initialMessages]);
 
   useFocusEffect(
     useCallback(() => {
@@ -46,31 +53,11 @@ export default function IndividualChatScreen({ navigation, route }: Props) {
     }, [reloadMessages]),
   );
 
-  function appendMessage(message: ChatMessage) {
-    setLiveMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]));
-  }
-
   useEffect(() => {
-    if (!token || !userId) {
-      return;
-    }
-    const conversationKey = [userId, otherUserId].sort((a, b) => a - b).join('-');
-    const client = subscribeToConversation(token, conversationKey, appendMessage);
-    return () => {
-      client.deactivate();
-    };
-  }, [token, userId, otherUserId]);
-
-  const allMessages = useMemo(() => {
-    const byId = new Map<string, ChatMessage>();
-    for (const message of messages ?? []) {
-      byId.set(message.id, message);
-    }
-    for (const message of liveMessages) {
-      byId.set(message.id, message);
-    }
-    return Array.from(byId.values()).sort((a, b) => a.sentAt - b.sentAt);
-  }, [messages, liveMessages]);
+    return subscribeToThread(matchId, (message) => {
+      setMessages((prev) => mergeMessage(prev, message));
+    });
+  }, [matchId]);
 
   async function handleSend() {
     const text = draft.trim();
@@ -79,8 +66,8 @@ export default function IndividualChatScreen({ navigation, route }: Props) {
     }
     setSending(true);
     setDraft('');
-    const message = await sendConversationMessage(otherUserId, text);
-    appendMessage(message);
+    const sent = await sendThreadMessage(matchId, text);
+    setMessages((prev) => mergeMessage(prev, sent));
     setSending(false);
   }
 
@@ -93,7 +80,7 @@ export default function IndividualChatScreen({ navigation, route }: Props) {
       );
     }
 
-    const isMine = Number(item.message.senderId) === userId;
+    const isMine = item.message.senderId === 'me';
     return (
       <View style={[styles.bubbleRow, isMine && styles.bubbleRowMine]}>
         <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleTheirs]}>
@@ -106,8 +93,9 @@ export default function IndividualChatScreen({ navigation, route }: Props) {
     );
   }
 
-  const firstName = otherUserName?.split(' ')[0] ?? '';
-  const listItems = buildChatListItems(allMessages);
+  const displayName = match?.name ?? name ?? 'Roommate';
+  const firstName = displayName.split(' ')[0] ?? '';
+  const listItems = buildChatListItems(messages);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -127,12 +115,15 @@ export default function IndividualChatScreen({ navigation, route }: Props) {
           onPress={() => navigation.navigate('MatchProfile', { matchId })}
         >
           <IconCircle size={36} backgroundColor={colors.primaryLight}>
-            <Text style={styles.avatarInitial}>{(otherUserName ?? '?').charAt(0).toUpperCase()}</Text>
+            <Text style={styles.avatarInitial}>{displayName.charAt(0).toUpperCase()}</Text>
           </IconCircle>
           <View>
             <Text style={styles.headerName} numberOfLines={1}>
-              {otherUserName ?? 'Roommate'}
+              {displayName}
             </Text>
+            {match?.matchPercent != null ? (
+              <Text style={styles.headerSubtitle}>{match.matchPercent}% match</Text>
+            ) : null}
           </View>
         </TouchableOpacity>
 
@@ -213,6 +204,11 @@ const styles = StyleSheet.create({
     fontSize: typography.body,
     fontWeight: typography.weightBold,
     color: colors.text,
+  },
+  headerSubtitle: {
+    fontSize: typography.caption,
+    color: colors.success,
+    fontWeight: typography.weightMedium,
   },
   messagesContent: {
     flexGrow: 1,

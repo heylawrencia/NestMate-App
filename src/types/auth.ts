@@ -1,13 +1,12 @@
 export interface AuthUser {
-  userId: number;
   email: string;
+  role?: 'STUDENT' | 'MANAGER';
 }
 
 export interface LoginResult {
   success: boolean;
   user?: AuthUser;
-  token?: string;
   errorMessage?: string;
-  // Set when login fails specifically because the account's email isn't verified yet.
-  requiresVerification?: boolean;
+  /** True when login failed specifically because the account isn't verified yet. */
+  needsVerification?: boolean;
 }

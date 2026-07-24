@@ -1,6 +1,6 @@
 export type RoommateMemberStatus = 'matched' | 'friend';
 
-export type CandidateGender = 'female' | 'male';
+export type CandidateGender = 'female' | 'male' | 'non-binary' | 'prefer-not-to-say';
 
 export interface RoommateCandidate {
   id: string;
