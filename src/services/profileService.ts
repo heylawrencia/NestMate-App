@@ -174,6 +174,22 @@ function mapSocialLevel(value?: string): number {
  * Also a simplification: onboarding only asks "are you a smoker", not
  * separately "are you OK living with one" - smokerOk is set equal to smoker.
  */
+export async function fetchMyProfile(): Promise<UserProfile> {
+  return fetchProfile();
+}
+
+export async function fetchProfileByUserId(userId: number): Promise<UserProfile> {
+  return fetchProfile();
+}
+
+export async function saveMyProfile(request: any): Promise<UserProfile> {
+  return updateProfile(request);
+}
+
+export function buildProfileRequest(data: OnboardingData): any {
+  return data;
+}
+
 export async function createLifestyleProfile(
   data: OnboardingData,
 ): Promise<{ success: boolean; errorMessage?: string }> {
@@ -207,3 +223,4 @@ export async function createLifestyleProfile(
     return { success: false, errorMessage: message };
   }
 }
+

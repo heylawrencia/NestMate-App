@@ -24,7 +24,7 @@ export default function OnboardingCompleteScreen({ navigation, route }: Props) {
     setStatus('saving');
     setErrorMessage(undefined);
 
-    const result = await register(data.email, data.password, data.fullName ?? '');
+    const result = await register(data.email, data.password ?? '', data.fullName ?? '');
     if (!result.success) {
       setStatus('error');
       setErrorMessage(result.errorMessage);

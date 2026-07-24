@@ -1,14 +1,30 @@
-/**
- * Shared API client for the NESTMATE backend.
- * Set in .env as EXPO_PUBLIC_API_BASE_URL - change it there when the
- * backend's network address changes, no code edit needed. Falls back to
- * localhost (web mode, same machine) if .env is missing.
- */
-export const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
+import { Platform } from 'react-native';
+
+function resolveBaseUrl(): string {
+  const configured =
+    process.env.EXPO_PUBLIC_API_BASE_URL ??
+    process.env.EXPO_PUBLIC_API_URL ??
+    'http://localhost:8080';
+  if (Platform.OS === 'android' && configured.includes('localhost')) {
+    return configured.replace('localhost', '10.0.2.2');
+  }
+  return configured;
+}
+
+export const BASE_URL = resolveBaseUrl();
+
+export function getApiBaseUrl(): string {
+  return BASE_URL;
+}
 
 let authToken: string | null = null;
+let onUnauthorized: (() => void) | null = null;
 
-export function setToken(token: string | null) {
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+  onUnauthorized = handler;
+}
+
+export function setToken(token: string | null): void {
   authToken = token;
   try {
     if (typeof localStorage !== 'undefined') {
@@ -18,6 +34,10 @@ export function setToken(token: string | null) {
   } catch {
     // localStorage unavailable (native) - in-memory token is fine
   }
+}
+
+export function setAuthToken(token: string | null): void {
+  setToken(token);
 }
 
 export function getToken(): string | null {
@@ -72,6 +92,10 @@ export async function api<T>(
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
   });
 
+  if (response.status === 401 || response.status === 403) {
+    onUnauthorized?.();
+  }
+
   const text = await response.text();
   const data = text ? JSON.parse(text) : null;
 
@@ -82,4 +106,12 @@ export async function api<T>(
   }
   return data as T;
 }
+
+export const apiClient = {
+  get: <T>(path: string) => api<T>(path, { method: 'GET' }),
+  post: <T>(path: string, body?: unknown) => api<T>(path, { method: 'POST', body }),
+  put: <T>(path: string, body?: unknown) => api<T>(path, { method: 'PUT', body }),
+  delete: <T>(path: string) => api<T>(path, { method: 'DELETE' }),
+};
+
 

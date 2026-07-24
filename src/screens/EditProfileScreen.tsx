@@ -72,19 +72,19 @@ export default function EditProfileScreen({ navigation }: Props) {
     if (!profile) {
       return;
     }
-    setCity(profile.city);
-    setBudgetMin(String(profile.budgetMin));
-    setBudgetMax(String(profile.budgetMax));
+    setCity(profile.city ?? '');
+    setBudgetMin(profile.budgetMin ? String(profile.budgetMin) : '');
+    setBudgetMax(profile.budgetMax ? String(profile.budgetMax) : '');
     setBio(profile.bio ?? '');
-    setSleepSchedule(SLEEP_SCHEDULE_REVERSE[profile.sleepSchedule]);
-    setCleanliness(closestLabel(profile.cleanliness, CLEANLINESS_OPTIONS, CLEANLINESS_SCALE));
-    setNoiseLevel(closestLabel(profile.noiseTolerance, NOISE_OPTIONS, NOISE_SCALE));
+    setSleepSchedule(profile.sleepSchedule ? SLEEP_SCHEDULE_REVERSE[profile.sleepSchedule] : undefined);
+    setCleanliness(typeof profile.cleanliness === 'number' ? closestLabel(profile.cleanliness, CLEANLINESS_OPTIONS, CLEANLINESS_SCALE) : (profile.cleanliness ?? 'Average'));
+    setNoiseLevel(typeof profile.noiseTolerance === 'number' ? closestLabel(profile.noiseTolerance, NOISE_OPTIONS, NOISE_SCALE) : (profile.noiseLevel ?? 'Moderate'));
     setSocialEnergy(closestLabel(profile.socialLevel ?? 3, SOCIAL_OPTIONS, SOCIAL_SCALE));
     setSmoking(profile.smoker ? 'Smoker' : 'Non-Smoker');
     setSmokerOk(profile.smokerOk ? 'Yes' : 'No');
     setHasPets(profile.hasPets ? 'Yes' : 'No');
     setPetFriendly(profile.petsOk ? 'Yes' : 'No');
-    setSeekingType(SEEKING_TYPE_REVERSE[profile.seekingType]);
+    setSeekingType(profile.seekingType ? SEEKING_TYPE_REVERSE[profile.seekingType] : undefined);
   }, [profile]);
 
   async function handleSave() {

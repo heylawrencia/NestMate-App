@@ -29,7 +29,11 @@ export default function SplashScreen({ navigation }: Props) {
     }
 
     const timer = setTimeout(() => {
-      navigation.replace(token ? 'Home' : 'GetStarted');
+      if (token) {
+        navigation.replace('Home', { email: '' });
+      } else {
+        navigation.replace('GetStarted');
+      }
     }, SPLASH_DURATION_MS);
 
     return () => clearTimeout(timer);

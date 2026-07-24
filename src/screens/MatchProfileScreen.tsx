@@ -38,8 +38,10 @@ export default function MatchProfileScreen({ navigation, route }: Props) {
   const facts = profile
     ? [
         profile.city,
-        SLEEP_SCHEDULE_LABELS[profile.sleepSchedule] ?? profile.sleepSchedule,
-        `GH₵${profile.budgetMin.toLocaleString()}–${profile.budgetMax.toLocaleString()}/yr`,
+        profile.sleepSchedule ? (SLEEP_SCHEDULE_LABELS[profile.sleepSchedule] ?? profile.sleepSchedule) : undefined,
+        profile.budgetMin !== undefined && profile.budgetMax !== undefined
+          ? `GH₵${profile.budgetMin.toLocaleString()}–${profile.budgetMax.toLocaleString()}/yr`
+          : undefined,
       ].filter(Boolean)
     : [];
 

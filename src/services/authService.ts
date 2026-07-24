@@ -26,12 +26,16 @@ export async function login(email: string, password: string): Promise<LoginResul
       body: { email, password },
     });
     setToken(res.token);
-    return { success: true, user: { email: res.email, role: res.role } };
+    return {
+      success: true,
+      token: res.token,
+      user: { userId: res.userId, email: res.email, role: res.role },
+    };
   } catch (e) {
     const message =
       e instanceof ApiError ? e.message : 'Cannot reach the server. Is the backend running?';
     const needsVerification = e instanceof ApiError && e.status === 403 && /verify/i.test(e.message);
-    return { success: false, errorMessage: message, needsVerification };
+    return { success: false, errorMessage: message, needsVerification, requiresVerification: needsVerification };
   }
 }
 
@@ -46,7 +50,11 @@ export async function register(
       body: { email, password, fullName },
     });
     setToken(res.token);
-    return { success: true, user: { email: res.email } };
+    return {
+      success: true,
+      token: res.token,
+      user: { userId: res.userId, email: res.email, role: res.role },
+    };
   } catch (e) {
     const message =
       e instanceof ApiError ? e.message : 'Cannot reach the server. Is the backend running?';

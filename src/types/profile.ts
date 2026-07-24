@@ -10,9 +10,19 @@ export interface UserProfile {
   sleepSchedule?: string;
   cleanliness?: string;
   noiseLevel?: string;
+  noiseTolerance?: number;
   socialEnergy?: string;
+  socialLevel?: number;
   smoking?: string;
+  smoker?: boolean;
+  smokerOk?: boolean;
   petFriendly?: string;
+  hasPets?: boolean;
+  petsOk?: boolean;
+  seekingType?: string;
+  city?: string;
+  budgetMin?: number;
+  budgetMax?: number;
 }
 
 export type UserProfileUpdate = Partial<UserProfile>;

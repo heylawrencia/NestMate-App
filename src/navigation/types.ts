@@ -13,12 +13,15 @@ export interface OnboardingLifestyle {
   noiseLevel?: string;
   communication?: string;
   petFriendly?: string;
+  seekingType?: string;
+  hasPets?: string;
+  smokerOk?: string;
 }
 
 export interface OnboardingData {
   email: string;
   /** Carried through onboarding only to create the real account at the end - never persisted client-side beyond this. */
-  password: string;
+  password?: string;
   fullName?: string;
   dateOfBirth?: string;
   bio?: string;
@@ -28,6 +31,9 @@ export interface OnboardingData {
   photos?: string[];
   interests?: string[];
   lifestyle?: OnboardingLifestyle;
+  city?: string;
+  budgetMin?: string;
+  budgetMax?: string;
 }
 
 export type RootStackParamList = {
@@ -57,8 +63,8 @@ export type RootStackParamList = {
   Preferences: undefined;
   Notifications: undefined;
   Placeholder: { title: string; description?: string };
-  MatchProfile: { matchId: string };
-  IndividualChat: { matchId: string; name?: string };
+  MatchProfile: { matchId: string; otherUserName?: string; name?: string };
+  IndividualChat: { matchId: string; otherUserName?: string; name?: string };
   GroupChat: { hostelId: string; roomTypeId: string };
 };
 
