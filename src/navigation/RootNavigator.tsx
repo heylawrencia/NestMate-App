@@ -7,6 +7,7 @@ import GetStartedScreen from '../screens/GetStartedScreen';
 import LoginScreen from '../screens/LoginScreen';
 import SignUpScreen from '../screens/SignUpScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
+import ResetPasswordScreen from '../screens/ResetPasswordScreen';
 import VerifyEmailScreen from '../screens/VerifyEmailScreen';
 import AboutYouScreen from '../screens/onboarding/AboutYouScreen';
 import UploadPhotosScreen from '../screens/onboarding/UploadPhotosScreen';
@@ -40,6 +41,7 @@ export default function RootNavigator() {
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="SignUp" component={SignUpScreen} />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+      <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
       <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
       <Stack.Screen name="OnboardingAboutYou" component={AboutYouScreen} />
       <Stack.Screen name="OnboardingPhotos" component={UploadPhotosScreen} />

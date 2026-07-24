@@ -36,6 +36,7 @@ export type RootStackParamList = {
   Login: undefined;
   SignUp: undefined;
   ForgotPassword: undefined;
+  ResetPassword: { email: string };
   VerifyEmail: { email: string; name?: string };
   OnboardingAboutYou: { data: OnboardingData };
   OnboardingPhotos: { data: OnboardingData };

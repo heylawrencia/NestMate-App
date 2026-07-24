@@ -78,3 +78,28 @@ export async function resendVerification(email: string): Promise<LoginResult> {
     return { success: false, errorMessage: message };
   }
 }
+
+/** Always succeeds from the caller's side - the backend never reveals whether the email is registered. */
+export async function forgotPassword(email: string): Promise<LoginResult> {
+  try {
+    await api('/api/auth/forgot-password', { method: 'POST', body: { email } });
+    return { success: true };
+  } catch (e) {
+    const message = e instanceof ApiError ? e.message : 'Could not send reset code. Check your connection.';
+    return { success: false, errorMessage: message };
+  }
+}
+
+export async function resetPassword(
+  email: string,
+  code: string,
+  newPassword: string,
+): Promise<LoginResult> {
+  try {
+    await api('/api/auth/reset-password', { method: 'POST', body: { email, code, newPassword } });
+    return { success: true };
+  } catch (e) {
+    const message = e instanceof ApiError ? e.message : 'Could not reset password. Check your connection.';
+    return { success: false, errorMessage: message };
+  }
+}

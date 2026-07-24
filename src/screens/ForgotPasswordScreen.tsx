@@ -18,6 +18,7 @@ import IconCircle from '../components/IconCircle';
 import ScreenHeader from '../components/ScreenHeader';
 import { colors, spacing, typography } from '../theme';
 import { RootStackParamList } from '../navigation/types';
+import { forgotPassword } from '../services/authService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ForgotPassword'>;
 
@@ -42,10 +43,10 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
     setError(undefined);
 
     setLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    await forgotPassword(trimmedEmail);
     setLoading(false);
 
-    navigation.navigate('VerifyEmail', { email: trimmedEmail });
+    navigation.navigate('ResetPassword', { email: trimmedEmail });
   }
 
   return (
@@ -65,7 +66,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
           </IconCircle>
 
           <Text style={styles.subtitle}>
-            Enter your email and we&apos;ll send you a link to reset your password.
+            Enter your email and we&apos;ll send you a code to reset your password.
           </Text>
 
           <View style={styles.form}>
@@ -80,7 +81,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
               autoCorrect={false}
             />
 
-            <AppButton title="Send Reset Link" onPress={handleSendResetLink} loading={loading} />
+            <AppButton title="Send Reset Code" onPress={handleSendResetLink} loading={loading} />
           </View>
 
           <TouchableOpacity style={styles.footerLink} onPress={() => navigation.goBack()}>
