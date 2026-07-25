@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { colors, spacing, typography } from '../theme';
@@ -17,9 +18,11 @@ interface ScreenHeaderProps {
 }
 
 export default function ScreenHeader({ title, subtitle, onBack, rightAction }: ScreenHeaderProps) {
+  const insets = useSafeAreaInsets();
+
   if (!onBack) {
     return (
-      <View style={styles.centeredContainer}>
+      <View style={[styles.centeredContainer, { paddingTop: insets.top }]}>
         <Text style={styles.title}>{title}</Text>
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
       </View>
@@ -27,7 +30,7 @@ export default function ScreenHeader({ title, subtitle, onBack, rightAction }: S
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.row}>
         <TouchableOpacity
           onPress={onBack}

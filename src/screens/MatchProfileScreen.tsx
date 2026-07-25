@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -51,9 +51,13 @@ export default function MatchProfileScreen({ navigation, route }: Props) {
           {match ? (
             <>
               <ElevatedCard style={styles.card}>
-                <View style={styles.imagePlaceholder}>
-                  <Ionicons name="image-outline" size={40} color={colors.textMuted} />
-                </View>
+                {profile?.avatarUri ? (
+                  <Image source={{ uri: profile.avatarUri }} style={styles.photo} resizeMode="cover" />
+                ) : (
+                  <View style={styles.imagePlaceholder}>
+                    <Ionicons name="image-outline" size={40} color={colors.textMuted} />
+                  </View>
+                )}
 
                 <View style={styles.nameRow}>
                   <Text style={styles.name}>{match.fullName}</Text>
@@ -120,6 +124,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: spacing.lg,
+  },
+  photo: {
+    width: '100%',
+    aspectRatio: 4 / 3,
+    borderRadius: 16,
     marginBottom: spacing.lg,
   },
   nameRow: {

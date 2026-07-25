@@ -82,7 +82,12 @@ export async function api<T>(
   path: string,
   options: { method?: string; body?: unknown } = {},
 ): Promise<T> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    // Free-tier ngrok tunnels serve an HTML interstitial page instead of
+    // proxying through unless this header is present.
+    'ngrok-skip-browser-warning': 'true',
+  };
   const token = getToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
 

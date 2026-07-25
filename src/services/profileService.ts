@@ -178,8 +178,25 @@ export async function fetchMyProfile(): Promise<UserProfile> {
   return fetchProfile();
 }
 
+interface BackendPublicProfile {
+  userId: number;
+  fullName: string;
+  avatarUri: string | null;
+  gender: string | null;
+  dateOfBirth: string | null;
+  bio: string | null;
+  schoolLevel: string | null;
+  sleepSchedule: string | null;
+  cleanliness: number | null;
+  noiseTolerance: number | null;
+  socialLevel: number | null;
+  smoker: boolean | null;
+  petsOk: boolean | null;
+}
+
 export async function fetchProfileByUserId(userId: number): Promise<UserProfile> {
-  return fetchProfile();
+  const p = await api<BackendPublicProfile>(`/api/profiles/${userId}`);
+  return toUserProfile({ ...p, email: '' });
 }
 
 export async function saveMyProfile(request: any): Promise<UserProfile> {
