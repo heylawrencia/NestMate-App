@@ -31,6 +31,7 @@ import PlaceholderScreen from '../screens/PlaceholderScreen';
 import MatchProfileScreen from '../screens/MatchProfileScreen';
 import IndividualChatScreen from '../screens/IndividualChatScreen';
 import GroupChatScreen from '../screens/GroupChatScreen';
+import UpgradePremiumScreen from '../screens/UpgradePremiumScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -66,6 +67,7 @@ export default function RootNavigator() {
       <Stack.Screen name="MatchProfile" component={MatchProfileScreen} />
       <Stack.Screen name="IndividualChat" component={IndividualChatScreen} />
       <Stack.Screen name="GroupChat" component={GroupChatScreen} />
+      <Stack.Screen name="UpgradePremium" component={UpgradePremiumScreen} />
     </Stack.Navigator>
   );
 }

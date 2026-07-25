@@ -139,11 +139,14 @@ export default function HomeScreen({ navigation }: Props) {
           {matchesLoading ? (
             <ActivityIndicator color={colors.primary} style={styles.sectionLoader} />
           ) : matchesPaywalled ? (
-            <ElevatedCard style={styles.noMatchesCard}>
-              <Text style={styles.noMatchesText}>
-                You&apos;ve used your free matches this month. Upgrade to Premium for unlimited matching.
-              </Text>
-            </ElevatedCard>
+            <TouchableOpacity onPress={() => navigation.navigate('UpgradePremium')} accessibilityRole="button">
+              <ElevatedCard style={styles.noMatchesCard}>
+                <Text style={styles.noMatchesText}>
+                  You&apos;ve used your free matches this month.{' '}
+                  <Text style={styles.upgradeLink}>Upgrade to Premium</Text> for unlimited matching.
+                </Text>
+              </ElevatedCard>
+            </TouchableOpacity>
           ) : topMatches && topMatches.length > 0 ? (
             <View style={styles.matchesRow}>
               {topMatches.map((match: Match, index: number) => (
@@ -355,6 +358,10 @@ const styles = StyleSheet.create({
     fontSize: typography.caption,
     color: colors.textMuted,
     textAlign: 'center',
+  },
+  upgradeLink: {
+    color: colors.primary,
+    fontWeight: typography.weightBold,
   },
   roomCard: {
     padding: spacing.md,

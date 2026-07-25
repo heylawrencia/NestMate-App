@@ -68,6 +68,8 @@ export default function MatchesScreen({ navigation }: Props) {
             icon="lock-closed-outline"
             title="You've used your free matches this month"
             description="Upgrade to Premium for unlimited matching."
+            actionLabel="Upgrade to Premium"
+            onAction={() => navigation.navigate('UpgradePremium')}
           />
         ) : matches && matches.length > 0 ? (
           <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>

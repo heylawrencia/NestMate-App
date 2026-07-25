@@ -66,6 +66,7 @@ export type RootStackParamList = {
   MatchProfile: { matchId: string; otherUserName?: string; name?: string };
   IndividualChat: { matchId: string; otherUserName?: string; name?: string };
   GroupChat: { hostelId: string; roomTypeId: string };
+  UpgradePremium: undefined;
 };
 
 export type ExploreStackParamList = {
