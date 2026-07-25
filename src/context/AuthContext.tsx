@@ -41,19 +41,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      const storedToken = await tokenStorage.getToken();
-      const payload = storedToken ? decodeJwtPayload(storedToken) : null;
+      try {
+        const storedToken = await tokenStorage.getToken();
+        const payload = storedToken ? decodeJwtPayload(storedToken) : null;
 
-      if (storedToken && payload && !isJwtExpired(payload)) {
-        setAuthToken(storedToken);
-        setToken(storedToken);
-        setUserId(Number(payload.sub));
-        setEmail(payload.email);
-      } else if (storedToken) {
-        await tokenStorage.clearToken();
+        if (storedToken && payload && !isJwtExpired(payload)) {
+          setAuthToken(storedToken);
+          setToken(storedToken);
+          setUserId(Number(payload.sub));
+          setEmail(payload.email);
+        } else if (storedToken) {
+          await tokenStorage.clearToken();
+        }
+      } catch (e) {
+        // Never let a storage read failure strand the app on the Splash
+        // screen forever - fall back to "not logged in" and move on.
+        console.warn('Failed to restore session:', e);
+      } finally {
+        setIsLoading(false);
       }
-
-      setIsLoading(false);
     })();
   }, []);
 

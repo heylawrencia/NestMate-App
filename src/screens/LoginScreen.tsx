@@ -17,7 +17,7 @@ import AppButton from '../components/AppButton';
 import ScreenHeader from '../components/ScreenHeader';
 import { colors, spacing, typography } from '../theme';
 import { RootStackParamList } from '../navigation/types';
-import * as authService from '../services/authService';
+import { useAuth } from '../context/AuthContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
@@ -29,6 +29,7 @@ interface FormErrors {
 }
 
 export default function LoginScreen({ navigation }: Props) {
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -65,7 +66,7 @@ export default function LoginScreen({ navigation }: Props) {
     }
 
     setLoading(true);
-    const result = await authService.login(email.trim(), password);
+    const result = await login(email.trim(), password);
     setLoading(false);
 
     if (result.success) {

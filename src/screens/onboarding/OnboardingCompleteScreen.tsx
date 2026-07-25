@@ -7,7 +7,7 @@ import AppButton from '../../components/AppButton';
 import IconCircle from '../../components/IconCircle';
 import { colors, spacing, typography } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
-import { register } from '../../services/authService';
+import { useAuth } from '../../context/AuthContext';
 import { createLifestyleProfile } from '../../services/profileService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OnboardingComplete'>;
@@ -16,6 +16,7 @@ type Status = 'saving' | 'error' | 'done';
 
 export default function OnboardingCompleteScreen({ navigation, route }: Props) {
   const { data } = route.params;
+  const { register } = useAuth();
   const progress = useRef(new Animated.Value(0)).current;
   const [status, setStatus] = useState<Status>('saving');
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
