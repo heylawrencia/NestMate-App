@@ -7,14 +7,12 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import AsyncBoundary from '../components/AsyncBoundary';
 import Badge from '../components/Badge';
 import ElevatedCard from '../components/ElevatedCard';
-import GradientHeader from '../components/GradientHeader';
-import HeaderIconRow from '../components/HeaderIconRow';
+import ScreenHeader from '../components/ScreenHeader';
 import { colors, spacing, typography } from '../theme';
 import { RootStackParamList } from '../navigation/types';
 import { useAsyncData } from '../hooks/useAsyncData';
 import { fetchMatches } from '../services/matchService';
 import { fetchProfileByUserId } from '../services/profileService';
-import { useDrawer } from '../context/DrawerContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MatchProfile'>;
 
@@ -27,7 +25,6 @@ const SLEEP_SCHEDULE_LABELS: Record<string, string> = {
 export default function MatchProfileScreen({ navigation, route }: Props) {
   const { matchId } = route.params;
   const userId = Number(matchId);
-  const { openDrawer } = useDrawer();
   const { data, loading, error, reload } = useAsyncData(async () => {
     const [matches, profile] = await Promise.all([fetchMatches(), fetchProfileByUserId(userId)]);
     return { match: matches.find((m) => m.userId === userId), profile };
@@ -47,14 +44,7 @@ export default function MatchProfileScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
-      <GradientHeader>
-        <HeaderIconRow
-          onBack={() => navigation.goBack()}
-          onMenuPress={openDrawer}
-          onNotificationsPress={() => navigation.navigate('Notifications')}
-        />
-        <Text style={styles.headerTitle}>{match?.fullName ?? 'Profile'}</Text>
-      </GradientHeader>
+      <ScreenHeader title={match?.fullName ?? 'Profile'} onBack={() => navigation.goBack()} />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <AsyncBoundary loading={loading} error={error} onRetry={reload}>
@@ -112,15 +102,11 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.surfaceTint,
-  },
-  headerTitle: {
-    fontSize: typography.h1,
-    fontWeight: typography.weightBold,
-    color: colors.white,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.lg,
   },
   card: {
