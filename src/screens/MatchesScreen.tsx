@@ -66,8 +66,8 @@ export default function MatchesScreen({ navigation }: Props) {
         {paywalled ? (
           <EmptyState
             icon="lock-closed-outline"
-            title="You've used your free matches this month"
-            description="Upgrade to Premium for unlimited matching."
+            title="You've used your 5 free days this month"
+            description="Free accounts get 5 days of match-checking a month - upgrade to Premium to check matches every day."
             actionLabel="Upgrade to Premium"
             onAction={() => navigation.navigate('UpgradePremium')}
           />

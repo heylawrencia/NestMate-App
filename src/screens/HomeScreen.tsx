@@ -142,8 +142,8 @@ export default function HomeScreen({ navigation }: Props) {
             <TouchableOpacity onPress={() => navigation.navigate('UpgradePremium')} accessibilityRole="button">
               <ElevatedCard style={styles.noMatchesCard}>
                 <Text style={styles.noMatchesText}>
-                  You&apos;ve used your free matches this month.{' '}
-                  <Text style={styles.upgradeLink}>Upgrade to Premium</Text> for unlimited matching.
+                  You&apos;ve used all 5 of your free match-checking days this month.{' '}
+                  <Text style={styles.upgradeLink}>Upgrade to Premium</Text> to check matches every day.
                 </Text>
               </ElevatedCard>
             </TouchableOpacity>
