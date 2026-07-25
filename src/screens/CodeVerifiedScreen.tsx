@@ -89,11 +89,17 @@ export default function CodeVerifiedScreen({ navigation, route }: Props) {
               </View>
 
               <AppButton
+                title="Find roommates & invite"
+                onPress={() => navigation.navigate('Invites')}
+              />
+              <View style={styles.spacer} />
+              <AppButton
                 title="View your room"
+                variant="outline"
                 onPress={() =>
                   roomTypeId
                     ? navigation.navigate('Allocation', { hostelId, roomTypeId })
-                    : navigation.navigate('ExploreList')
+                    : navigation.navigate('MyHostel')
                 }
               />
             </ElevatedCard>
@@ -186,5 +192,8 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: 'center',
     marginTop: spacing.xl,
+  },
+  spacer: {
+    height: spacing.sm,
   },
 });

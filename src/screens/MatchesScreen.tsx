@@ -15,7 +15,7 @@ import IconCircle from '../components/IconCircle';
 import { colors, spacing, typography } from '../theme';
 import { MainTabParamList, RootStackParamList } from '../navigation/types';
 import { useAsyncData } from '../hooks/useAsyncData';
-import { fetchMatches } from '../services/matchService';
+import { fetchMatches, isPaywallError } from '../services/matchService';
 import { Match } from '../types/match';
 import { useDrawer } from '../context/DrawerContext';
 
@@ -26,7 +26,8 @@ type Props = CompositeScreenProps<
 
 export default function MatchesScreen({ navigation }: Props) {
   const { openDrawer } = useDrawer();
-  const { data: matches, loading, error, reload } = useAsyncData(() => fetchMatches(), []);
+  const { data: matches, loading, error, rawError, reload } = useAsyncData(() => fetchMatches(), []);
+  const paywalled = isPaywallError(rawError);
 
   useFocusEffect(
     useCallback(() => {
@@ -61,8 +62,14 @@ export default function MatchesScreen({ navigation }: Props) {
         <Text style={styles.header}>Matches</Text>
       </GradientHeader>
 
-      <AsyncBoundary loading={loading} error={error} onRetry={reload}>
-        {matches && matches.length > 0 ? (
+      <AsyncBoundary loading={loading} error={paywalled ? null : error} onRetry={reload}>
+        {paywalled ? (
+          <EmptyState
+            icon="lock-closed-outline"
+            title="You've used your free matches this month"
+            description="Upgrade to Premium for unlimited matching."
+          />
+        ) : matches && matches.length > 0 ? (
           <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             <ElevatedCard style={styles.listCard}>{matches.map(renderMatch)}</ElevatedCard>
           </ScrollView>
