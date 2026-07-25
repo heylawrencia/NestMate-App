@@ -8,6 +8,7 @@ interface ListRowProps {
   label: string;
   onPress: () => void;
   icon?: React.ComponentProps<typeof Ionicons>['name'];
+  subtitle?: string;
   destructive?: boolean;
   showChevron?: boolean;
   isLast?: boolean;
@@ -17,6 +18,7 @@ export default function ListRow({
   label,
   onPress,
   icon,
+  subtitle,
   destructive = false,
   showChevron = true,
   isLast = false,
@@ -30,7 +32,10 @@ export default function ListRow({
       {icon ? (
         <Ionicons name={icon} size={20} color={destructive ? colors.error : colors.textMuted} />
       ) : null}
-      <Text style={[styles.label, destructive && styles.labelDestructive]}>{label}</Text>
+      <View style={styles.textGroup}>
+        <Text style={[styles.label, destructive && styles.labelDestructive]}>{label}</Text>
+        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+      </View>
       {showChevron && !destructive ? (
         <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
       ) : null}
@@ -49,13 +54,20 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  label: {
+  textGroup: {
     flex: 1,
+  },
+  label: {
     fontSize: typography.body,
     color: colors.text,
   },
   labelDestructive: {
     color: colors.error,
     fontWeight: typography.weightBold,
+  },
+  subtitle: {
+    fontSize: typography.caption,
+    color: colors.textMuted,
+    marginTop: 2,
   },
 });

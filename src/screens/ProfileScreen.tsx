@@ -19,6 +19,7 @@ import { useDrawer } from '../context/DrawerContext';
 import { useAuth } from '../context/AuthContext';
 import { useAsyncData } from '../hooks/useAsyncData';
 import { fetchMyProfile } from '../services/profileService';
+import { fetchPlan } from '../services/planService';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabParamList, 'Profile'>,
@@ -29,12 +30,20 @@ export default function ProfileScreen({ navigation }: Props) {
   const { openDrawer } = useDrawer();
   const { email } = useAuth();
   const { data: profile, loading, error, reload } = useAsyncData(fetchMyProfile, []);
+  const { data: plan, reload: reloadPlan } = useAsyncData(fetchPlan, []);
 
   useFocusEffect(
     useCallback(() => {
       reload();
-    }, [reload]),
+      reloadPlan();
+    }, [reload, reloadPlan]),
   );
+
+  const planSubtitle = plan
+    ? plan.tier === 'PREMIUM'
+      ? `Premium${plan.premiumUntil ? ` · until ${new Date(plan.premiumUntil).toLocaleDateString()}` : ''}`
+      : 'Free plan'
+    : undefined;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
@@ -70,6 +79,12 @@ export default function ProfileScreen({ navigation }: Props) {
               </View>
 
               <ElevatedCard style={styles.listCard}>
+                <ListRow
+                  label="Premium"
+                  subtitle={planSubtitle}
+                  icon="star-outline"
+                  onPress={() => navigation.navigate('UpgradePremium')}
+                />
                 <ListRow
                   label="Personal Info"
                   icon="person-outline"
