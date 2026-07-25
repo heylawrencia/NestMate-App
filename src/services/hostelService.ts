@@ -16,6 +16,7 @@ interface BackendHostelSummary {
   name: string;
   area: string;
   photoUrl?: string;
+  photoUrls?: string[];
   rating: number;
   kind: 'HOSTEL' | 'APARTMENT';
   fromPricePerYear: number;
@@ -106,7 +107,9 @@ function summaryToHostel(h: BackendHostelSummary): Hostel {
     rating: h.rating,
     bedsAvailable: h.bedsAvailable,
     fromPricePerYear: h.fromPricePerYear,
-    imageUrl: h.photoUrl,
+    imageUrl: h.photoUrls?.[0] ?? h.photoUrl,
+    imageUrls: h.photoUrls,
+    photoCount: h.photoUrls?.length,
     amenities: [],
     roomTypes: [],
   };
@@ -125,7 +128,9 @@ function detailToHostel(h: BackendHostelDetail): Hostel {
     rating: h.rating,
     bedsAvailable: roomTypes.reduce((sum, rt) => sum + rt.bedsLeft, 0),
     fromPricePerYear: prices.length ? Math.min(...prices) : 0,
-    imageUrl: h.photoUrl,
+    imageUrl: h.photoUrls?.[0] ?? h.photoUrl,
+    imageUrls: h.photoUrls,
+    photoCount: h.photoUrls?.length,
     amenities: [],
     roomTypes,
   };

@@ -1,5 +1,16 @@
-import React from 'react';
-import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import {
+  Dimensions,
+  Image,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CompositeScreenProps } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -27,6 +38,16 @@ export default function HostelDetailScreen({ navigation, route }: Props) {
     [hostelId],
   );
   const { openDrawer } = useDrawer();
+  const [galleryWidth, setGalleryWidth] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  const photos = hostel?.imageUrls?.length ? hostel.imageUrls : hostel?.imageUrl ? [hostel.imageUrl] : [];
+  const slideWidth = galleryWidth || Dimensions.get('window').width;
+
+  function handleGalleryScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
+    const index = Math.round(e.nativeEvent.contentOffset.x / slideWidth);
+    setActiveIndex(index);
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -46,23 +67,48 @@ export default function HostelDetailScreen({ navigation, route }: Props) {
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
-            <View style={styles.imagePlaceholder}>
-              {hostel.imageUrl ? (
-                <Image source={{ uri: hostel.imageUrl }} style={styles.image} resizeMode="cover" />
+            <View
+              style={styles.imagePlaceholder}
+              onLayout={(e) => setGalleryWidth(e.nativeEvent.layout.width)}
+            >
+              {photos.length > 0 ? (
+                <ScrollView
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  onMomentumScrollEnd={handleGalleryScroll}
+                  onScroll={handleGalleryScroll}
+                  scrollEventThrottle={32}
+                  style={styles.gallery}
+                >
+                  {photos.map((url, index) => (
+                    <View key={url + index} style={{ width: slideWidth, height: '100%' }}>
+                      <Image source={{ uri: url }} style={styles.image} resizeMode="cover" />
+                    </View>
+                  ))}
+                </ScrollView>
               ) : (
                 <Ionicons name="image-outline" size={40} color={colors.textMuted} />
               )}
-              {hostel.photoCount ? (
+              {photos.length > 1 ? (
                 <View style={styles.photoCountBadge}>
-                  <Text style={styles.photoCountText}>1/{hostel.photoCount}</Text>
+                  <Text style={styles.photoCountText}>
+                    {activeIndex + 1}/{photos.length}
+                  </Text>
                 </View>
               ) : null}
             </View>
 
-            <View style={styles.imageDots}>
-              <View style={[styles.imageDot, styles.imageDotActive]} />
-              <View style={styles.imageDot} />
-            </View>
+            {photos.length > 1 ? (
+              <View style={styles.imageDots}>
+                {photos.map((url, index) => (
+                  <View
+                    key={url + index}
+                    style={[styles.imageDot, index === activeIndex && styles.imageDotActive]}
+                  />
+                ))}
+              </View>
+            ) : null}
 
             <View style={styles.content}>
               <View style={styles.titleRow}>
@@ -142,6 +188,10 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     borderRadius: 20,
     overflow: 'hidden',
+  },
+  gallery: {
+    width: '100%',
+    height: '100%',
   },
   image: {
     width: '100%',

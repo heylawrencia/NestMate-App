@@ -20,6 +20,7 @@ export interface Hostel {
   bedsAvailable: number;
   fromPricePerYear: number;
   imageUrl?: string;
+  imageUrls?: string[];
   photoCount?: number;
   amenities: string[];
   roomTypes: RoomType[];
