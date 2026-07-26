@@ -67,27 +67,32 @@ function socialEnergyDisplay(value: number): string {
   }
 }
 
-function toUserProfile(p: BackendMyProfile): UserProfile {
+function toUserProfile(p?: Partial<BackendMyProfile> | null): UserProfile {
   return {
-    fullName: p.fullName,
-    email: p.email,
-    dateOfBirth: p.dateOfBirth ?? undefined,
-    bio: p.bio ?? undefined,
-    gender: p.gender ? GENDER_DISPLAY[p.gender] : undefined,
-    schoolLevel: p.schoolLevel ?? undefined,
-    avatarUri: p.avatarUri ?? undefined,
-    sleepSchedule: p.sleepSchedule ? SLEEP_SCHEDULE_DISPLAY[p.sleepSchedule] : undefined,
-    cleanliness: p.cleanliness != null ? cleanlinessDisplay(p.cleanliness) : undefined,
-    noiseLevel: p.noiseTolerance != null ? noiseLevelDisplay(p.noiseTolerance) : undefined,
-    socialEnergy: p.socialLevel != null ? socialEnergyDisplay(p.socialLevel) : undefined,
-    smoking: p.smoker != null ? (p.smoker ? 'Smoker' : 'Non-Smoker') : undefined,
-    petFriendly: p.petsOk != null ? (p.petsOk ? 'Yes' : 'No') : undefined,
+    fullName: p?.fullName ?? '',
+    email: p?.email ?? '',
+    dateOfBirth: p?.dateOfBirth ?? undefined,
+    bio: p?.bio ?? undefined,
+    gender: p?.gender ? (GENDER_DISPLAY[p.gender] ?? p.gender) : undefined,
+    schoolLevel: p?.schoolLevel ?? undefined,
+    avatarUri: p?.avatarUri ?? undefined,
+    sleepSchedule: p?.sleepSchedule ? (SLEEP_SCHEDULE_DISPLAY[p.sleepSchedule] ?? p.sleepSchedule) : undefined,
+    cleanliness: p?.cleanliness != null ? cleanlinessDisplay(p.cleanliness) : undefined,
+    noiseLevel: p?.noiseTolerance != null ? noiseLevelDisplay(p.noiseTolerance) : undefined,
+    socialEnergy: p?.socialLevel != null ? socialEnergyDisplay(p.socialLevel) : undefined,
+    smoking: p?.smoker != null ? (p.smoker ? 'Smoker' : 'Non-Smoker') : undefined,
+    petFriendly: p?.petsOk != null ? (p.petsOk ? 'Yes' : 'No') : undefined,
   };
 }
 
 export async function fetchProfile(): Promise<UserProfile> {
-  const p = await api<BackendMyProfile>('/api/profiles/me');
-  return toUserProfile(p);
+  try {
+    const p = await api<BackendMyProfile>('/api/profiles/me');
+    return toUserProfile(p);
+  } catch (e) {
+    console.warn('Failed to fetch profile from API, returning default profile structure:', e);
+    return toUserProfile(null);
+  }
 }
 
 export async function updateProfile(update: UserProfileUpdate): Promise<UserProfile> {
@@ -195,8 +200,13 @@ interface BackendPublicProfile {
 }
 
 export async function fetchProfileByUserId(userId: number): Promise<UserProfile> {
-  const p = await api<BackendPublicProfile>(`/api/profiles/${userId}`);
-  return toUserProfile({ ...p, email: '' });
+  try {
+    const p = await api<BackendPublicProfile>(`/api/profiles/${userId}`);
+    return toUserProfile({ ...p, email: '' });
+  } catch (e) {
+    console.warn(`Failed to fetch public profile for user ${userId}:`, e);
+    return toUserProfile({ fullName: 'NestMate Member' });
+  }
 }
 
 export async function saveMyProfile(request: any): Promise<UserProfile> {
