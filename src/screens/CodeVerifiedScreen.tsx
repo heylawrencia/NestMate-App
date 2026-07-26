@@ -89,18 +89,14 @@ export default function CodeVerifiedScreen({ navigation, route }: Props) {
               </View>
 
               <AppButton
-                title="Find roommates & invite"
-                onPress={() => navigation.navigate('Invites')}
+                title="Choose room type to match"
+                onPress={() => navigation.navigate('ChooseRoomType', { hostelId })}
               />
               <View style={styles.spacer} />
               <AppButton
-                title="View your room"
+                title="See all roommate matches"
                 variant="outline"
-                onPress={() =>
-                  roomTypeId
-                    ? navigation.navigate('Allocation', { hostelId, roomTypeId })
-                    : navigation.navigate('MyHostel')
-                }
+                onPress={() => navigation.navigate('Home', { screen: 'Matches' } as never)}
               />
             </ElevatedCard>
           ) : (

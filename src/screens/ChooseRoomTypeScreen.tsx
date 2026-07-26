@@ -66,7 +66,7 @@ export default function ChooseRoomTypeScreen({ navigation, route }: Props) {
     if (!selectedRoomTypeId) {
       return;
     }
-    navigation.navigate('PickRoom', { hostelId, roomTypeId: selectedRoomTypeId });
+    navigation.navigate('Home', { screen: 'Matches' } as never);
   }
 
   return (
@@ -94,7 +94,7 @@ export default function ChooseRoomTypeScreen({ navigation, route }: Props) {
               <View style={styles.roomTypeList}>{hostel.roomTypes.map(renderRoomTypeRow)}</View>
 
               <AppButton
-                title="Continue"
+                title="Find Roommate Matches"
                 onPress={handleContinue}
                 disabled={!selectedRoomTypeId}
               />
