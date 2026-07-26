@@ -1,11 +1,7 @@
 import { Hostel } from '../types/hostel';
 
 /**
- * Mock seed data standing in for a real hostels/rooms API.
- * Shape mirrors what the backend is expected to return, so
- * `hostelService` can be pointed at a real endpoint later without
- * changing anything that consumes it. Names are placeholders
- * (Hostel A, Apartment A, ...) until real listings are available.
+ * Seed data for hostels and apartments.
  */
 export const MOCK_HOSTELS: Hostel[] = [
   {
