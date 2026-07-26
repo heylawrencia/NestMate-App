@@ -207,8 +207,11 @@ export async function verifyAccessCode(
     });
     return { success: true };
   } catch (e) {
-    if (e instanceof ApiError) console.warn('verifyAccessCode:', e.message);
-    return { success: false };
+    const message =
+      e instanceof ApiError
+        ? e.message
+        : 'That code doesn’t look right. Check your receipt and try again.';
+    return { success: false, errorMessage: message };
   }
 }
 

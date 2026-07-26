@@ -58,7 +58,7 @@ export default function AccessCodeScreen({ navigation, route }: Props) {
     if (result.success) {
       navigation.navigate('CodeVerified', { hostelId, code, roomTypeId });
     } else {
-      setFormError('That code doesn’t look right. Check your receipt and try again.');
+      setFormError(result.errorMessage ?? 'That code doesn’t look right. Check your receipt and try again.');
     }
   }
 

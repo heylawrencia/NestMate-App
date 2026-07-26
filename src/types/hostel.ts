@@ -33,6 +33,7 @@ export interface HostelSearchFilters {
 
 export interface VerifyAccessCodeResult {
   success: boolean;
+  errorMessage?: string;
 }
 
 export interface RoomSummary {
