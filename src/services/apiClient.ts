@@ -89,6 +89,11 @@ export class ApiError extends Error {
   }
 }
 
+// Without this, a stalled connection (the tunnel dropping mid-request, a
+// dead Wi-Fi hop, etc.) leaves fetch() pending forever with no error and no
+// way for the UI to recover - the caller's "Saving..." button just hangs.
+const REQUEST_TIMEOUT_MS = 20000;
+
 export async function api<T>(
   path: string,
   options: { method?: string; body?: unknown } = {},
@@ -102,11 +107,25 @@ export async function api<T>(
   const token = getToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const response = await fetch(`${BASE_URL}${path}`, {
-    method: options.method ?? 'GET',
-    headers,
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(`${BASE_URL}${path}`, {
+      method: options.method ?? 'GET',
+      headers,
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      signal: controller.signal,
+    });
+  } catch (e) {
+    if (e instanceof Error && e.name === 'AbortError') {
+      throw new ApiError(0, 'The request took too long. Check your connection and try again.');
+    }
+    throw e;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   // 401 means the token itself is bad/expired - safe to log out globally.
   // 403 can also mean "valid session, but this specific action isn't

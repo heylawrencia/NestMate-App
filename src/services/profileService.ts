@@ -232,14 +232,28 @@ export async function uploadAvatarPhoto(localUri: string): Promise<string> {
   formData.append('file', { uri: localUri, name: filename, type: mimeType } as unknown as Blob);
 
   const token = getToken();
-  const response = await fetch(`${getApiBaseUrl()}/api/profiles/me/photo`, {
-    method: 'POST',
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      'ngrok-skip-browser-warning': 'true',
-    },
-    body: formData,
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+
+  let response: Response;
+  try {
+    response = await fetch(`${getApiBaseUrl()}/api/profiles/me/photo`, {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        'ngrok-skip-browser-warning': 'true',
+      },
+      body: formData,
+      signal: controller.signal,
+    });
+  } catch (e) {
+    if (e instanceof Error && e.name === 'AbortError') {
+      throw new ApiError(0, 'The upload took too long. Check your connection and try again.');
+    }
+    throw e;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   const text = await response.text();
   const data = text ? JSON.parse(text) : null;
