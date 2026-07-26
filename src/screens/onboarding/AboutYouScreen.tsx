@@ -24,6 +24,7 @@ import OnboardingProgressBar from '../../components/OnboardingProgressBar';
 import { colors, spacing, typography } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
 import { isWithinWordLimit } from '../../utils/limitWords';
+import { resolveMediaUrl } from '../../services/apiClient';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OnboardingAboutYou'>;
 
@@ -136,7 +137,7 @@ export default function AboutYouScreen({ navigation, route }: Props) {
           <TouchableOpacity style={styles.avatarTouchable} onPress={handlePickAvatar} activeOpacity={0.8}>
             <IconCircle size={88}>
               {avatarUri ? (
-                <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+                <Image source={{ uri: resolveMediaUrl(avatarUri) }} style={styles.avatarImage} />
               ) : (
                 <Ionicons name="camera" size={28} color={colors.textMuted} />
               )}

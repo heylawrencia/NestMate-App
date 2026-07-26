@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CompositeScreenProps, useFocusEffect } from '@react-navigation/native';
@@ -20,6 +20,7 @@ import { useAuth } from '../context/AuthContext';
 import { useAsyncData } from '../hooks/useAsyncData';
 import { fetchMyProfile } from '../services/profileService';
 import { fetchPlan } from '../services/planService';
+import { resolveMediaUrl } from '../services/apiClient';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabParamList, 'Profile'>,
@@ -62,7 +63,14 @@ export default function ProfileScreen({ navigation }: Props) {
               <View style={styles.avatarSection}>
                 <View style={styles.avatarWrapper}>
                   <IconCircle size={96}>
-                    <Ionicons name="person" size={40} color={colors.textMuted} />
+                    {profile.avatarUri ? (
+                      <Image
+                        source={{ uri: resolveMediaUrl(profile.avatarUri) }}
+                        style={styles.avatarImage}
+                      />
+                    ) : (
+                      <Ionicons name="person" size={40} color={colors.textMuted} />
+                    )}
                   </IconCircle>
                 </View>
 
@@ -137,6 +145,10 @@ const styles = StyleSheet.create({
   },
   avatarWrapper: {
     marginBottom: spacing.md,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   name: {
     fontSize: typography.h2,

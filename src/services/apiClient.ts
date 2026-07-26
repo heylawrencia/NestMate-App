@@ -17,6 +17,17 @@ export function getApiBaseUrl(): string {
   return BASE_URL;
 }
 
+/** Turns a backend-relative path (e.g. "/uploads/avatars/x.jpg") into a full URL against the
+ * current BASE_URL, so it keeps working no matter what host the app is currently pointed at.
+ * Absolute URLs and local device URIs (file://, data:, ph://, content://) pass through unchanged. */
+export function resolveMediaUrl(path?: string | null): string | undefined {
+  if (!path) return undefined;
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(path)) {
+    return path;
+  }
+  return `${BASE_URL}${path}`;
+}
+
 let authToken: string | null = null;
 let onUnauthorized: (() => void) | null = null;
 

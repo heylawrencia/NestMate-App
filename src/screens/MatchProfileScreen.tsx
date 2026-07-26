@@ -13,6 +13,7 @@ import { RootStackParamList } from '../navigation/types';
 import { useAsyncData } from '../hooks/useAsyncData';
 import { fetchMatches } from '../services/matchService';
 import { fetchProfileByUserId } from '../services/profileService';
+import { resolveMediaUrl } from '../services/apiClient';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MatchProfile'>;
 
@@ -52,7 +53,7 @@ export default function MatchProfileScreen({ navigation, route }: Props) {
             <>
               <ElevatedCard style={styles.card}>
                 {profile?.avatarUri ? (
-                  <Image source={{ uri: profile.avatarUri }} style={styles.photo} resizeMode="cover" />
+                  <Image source={{ uri: resolveMediaUrl(profile.avatarUri) }} style={styles.photo} resizeMode="cover" />
                 ) : (
                   <View style={styles.imagePlaceholder}>
                     <Ionicons name="image-outline" size={40} color={colors.textMuted} />

@@ -1,6 +1,6 @@
 import { UserProfile, UserProfileUpdate } from '../types/profile';
 import { OnboardingData } from '../navigation/types';
-import { api, ApiError } from './apiClient';
+import { api, ApiError, getApiBaseUrl, getToken } from './apiClient';
 
 const MOCK_NETWORK_DELAY_MS = 400;
 
@@ -203,6 +203,42 @@ export async function saveMyProfile(request: any): Promise<UserProfile> {
   return updateProfile(request);
 }
 
+const MIME_BY_EXTENSION: Record<string, string> = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+};
+
+/** Uploads a local device photo (e.g. from expo-image-picker) to the backend and
+ * returns the server's relative URL - the photo is otherwise only ever visible
+ * on the device that picked it. */
+export async function uploadAvatarPhoto(localUri: string): Promise<string> {
+  const filename = localUri.split('/').pop() ?? 'avatar.jpg';
+  const extension = (/\.(\w+)$/.exec(filename)?.[1] ?? 'jpg').toLowerCase();
+  const mimeType = MIME_BY_EXTENSION[extension] ?? 'image/jpeg';
+
+  const formData = new FormData();
+  formData.append('file', { uri: localUri, name: filename, type: mimeType } as unknown as Blob);
+
+  const token = getToken();
+  const response = await fetch(`${getApiBaseUrl()}/api/profiles/me/photo`, {
+    method: 'POST',
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      'ngrok-skip-browser-warning': 'true',
+    },
+    body: formData,
+  });
+
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!response.ok) {
+    throw new ApiError(response.status, data?.error ?? 'Could not upload photo.');
+  }
+  return data.avatarUri as string;
+}
+
 export function buildProfileRequest(data: OnboardingData): any {
   return data;
 }
@@ -211,6 +247,18 @@ export async function createLifestyleProfile(
   data: OnboardingData,
 ): Promise<{ success: boolean; errorMessage?: string }> {
   const smoker = data.lifestyle?.smoking ? data.lifestyle.smoking !== 'Non-Smoker' : false;
+
+  const localAvatarUri = data.avatarUri ?? data.photos?.[0];
+  let avatarUri: string | undefined = localAvatarUri;
+  if (localAvatarUri && !/^https?:\/\//.test(localAvatarUri)) {
+    try {
+      avatarUri = await uploadAvatarPhoto(localAvatarUri);
+    } catch (e) {
+      console.warn('Avatar upload failed, continuing without a photo:', e);
+      avatarUri = undefined;
+    }
+  }
+
   try {
     await api('/api/profiles/me', {
       method: 'PUT',
@@ -231,7 +279,7 @@ export async function createLifestyleProfile(
         seekingType: 'SEEKING_ROOM',
         dateOfBirth: data.dateOfBirth ? data.dateOfBirth.slice(0, 10) : undefined,
         schoolLevel: data.schoolLevel,
-        avatarUri: data.avatarUri ?? data.photos?.[0],
+        avatarUri,
       },
     });
     return { success: true };
