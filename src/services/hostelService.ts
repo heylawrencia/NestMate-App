@@ -136,6 +136,74 @@ function detailToHostel(h: BackendHostelDetail): Hostel {
   };
 }
 
+export const FALLBACK_HOSTELS: Hostel[] = [
+  {
+    id: '1',
+    name: 'Hostel A',
+    shortName: 'Hostel A',
+    category: 'Hostels',
+    location: 'Ayeduase',
+    distanceNote: '5 mins from campus',
+    rating: 4.5,
+    bedsAvailable: 8,
+    fromPricePerYear: 3500,
+    imageUrl: 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?auto=format&fit=crop&w=800&q=80',
+    amenities: ['24/7 Water', 'Study Room', 'Free Wi-Fi', 'Generator'],
+    roomTypes: [
+      { id: '101', label: '2 in a room', pricePerYear: 6000, capacity: 2, bedsLeft: 2, studentsMatching: 4 },
+      { id: '102', label: '4 in a room', pricePerYear: 3500, capacity: 4, bedsLeft: 6, studentsMatching: 8 },
+    ],
+  },
+  {
+    id: '2',
+    name: 'Hostel B',
+    shortName: 'Hostel B',
+    category: 'Hostels',
+    location: 'Kotei',
+    distanceNote: '10 mins from campus',
+    rating: 4.0,
+    bedsAvailable: 12,
+    fromPricePerYear: 2800,
+    imageUrl: 'https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?auto=format&fit=crop&w=800&q=80',
+    amenities: ['Shared Kitchen', 'Security Guard', 'Water Tank'],
+    roomTypes: [
+      { id: '201', label: '4 in a room', pricePerYear: 2800, capacity: 4, bedsLeft: 12, studentsMatching: 6 },
+    ],
+  },
+  {
+    id: '3',
+    name: 'Apartment A',
+    shortName: 'Apartment A',
+    category: 'Apartments',
+    location: 'Ayeduase',
+    distanceNote: 'Self-contained',
+    rating: 4.7,
+    bedsAvailable: 4,
+    fromPricePerYear: 8000,
+    imageUrl: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
+    amenities: ['Private Kitchen', 'Balcony', 'AC Installed', 'Gated Compound'],
+    roomTypes: [
+      { id: '301', label: '2 in a room', pricePerYear: 8000, capacity: 2, bedsLeft: 4, studentsMatching: 3 },
+    ],
+  },
+  {
+    id: '4',
+    name: 'Apartment B',
+    shortName: 'Apartment B',
+    category: 'Apartments',
+    location: 'Campus Rim',
+    distanceNote: 'Luxury suites',
+    rating: 4.8,
+    bedsAvailable: 2,
+    fromPricePerYear: 9500,
+    imageUrl: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80',
+    amenities: ['Private Kitchen', 'Swimming Pool', 'Gym Access', 'Underground Parking'],
+    roomTypes: [
+      { id: '401', label: '2 in a room', pricePerYear: 9500, capacity: 2, bedsLeft: 2, studentsMatching: 5 },
+    ],
+  },
+];
+
 export async function fetchHostels(filters: HostelSearchFilters = {}): Promise<Hostel[]> {
   const params = new URLSearchParams();
   if (filters.query?.trim()) params.set('search', filters.query.trim());
@@ -143,11 +211,21 @@ export async function fetchHostels(filters: HostelSearchFilters = {}): Promise<H
   const qs = params.toString();
   try {
     const list = await api<BackendHostelSummary[]>(`/api/hostels${qs ? `?${qs}` : ''}`);
-    return list.map(summaryToHostel);
+    if (list && list.length > 0) {
+      return list.map(summaryToHostel);
+    }
   } catch (e) {
-    console.warn('fetchHostels failed (are you logged in?):', e);
-    return [];
+    console.warn('fetchHostels API call failed, using default list:', e);
   }
+
+  return FALLBACK_HOSTELS.filter((h) => {
+    if (filters.category && h.category !== filters.category) return false;
+    if (filters.query?.trim()) {
+      const q = filters.query.trim().toLowerCase();
+      return h.name.toLowerCase().includes(q) || h.location.toLowerCase().includes(q);
+    }
+    return true;
+  });
 }
 
 export async function fetchHostelById(hostelId: string): Promise<Hostel | null> {
@@ -155,8 +233,8 @@ export async function fetchHostelById(hostelId: string): Promise<Hostel | null> 
     const detail = await api<BackendHostelDetail>(`/api/hostels/${hostelId}`);
     return detailToHostel(detail);
   } catch (e) {
-    console.warn('fetchHostelById failed:', e);
-    return null;
+    console.warn('fetchHostelById API call failed, using default item:', e);
+    return FALLBACK_HOSTELS.find((h) => h.id === hostelId) ?? FALLBACK_HOSTELS[0];
   }
 }
 
@@ -207,8 +285,11 @@ export async function verifyAccessCode(
     });
     return { success: true };
   } catch (e) {
-    if (e instanceof ApiError) console.warn('verifyAccessCode:', e.message);
-    return { success: false };
+    const message =
+      e instanceof ApiError
+        ? e.message
+        : 'That code doesn’t look right. Check your receipt and try again.';
+    return { success: false, errorMessage: message };
   }
 }
 

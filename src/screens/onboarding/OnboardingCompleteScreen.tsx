@@ -71,6 +71,8 @@ export default function OnboardingCompleteScreen({ navigation, route }: Props) {
             <Text style={styles.subtitle}>{errorMessage ?? 'Something went wrong.'}</Text>
             <View style={styles.form}>
               <AppButton title="Try again" onPress={createAccount} />
+              <View style={styles.buttonSpacer} />
+              <AppButton title="Back to Sign Up" variant="outline" onPress={() => navigation.navigate('SignUp')} />
             </View>
           </>
         ) : status === 'saving' ? (
@@ -153,5 +155,8 @@ const styles = StyleSheet.create({
   },
   form: {
     width: '100%',
+  },
+  buttonSpacer: {
+    height: spacing.sm,
   },
 });
