@@ -17,6 +17,7 @@ import ScreenHeader from '../components/ScreenHeader';
 import { colors, spacing, typography } from '../theme';
 import { RootStackParamList } from '../navigation/types';
 import { resendVerification, verifyEmail } from '../services/authService';
+import { createLifestyleProfile } from '../services/profileService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VerifyEmail'>;
 
@@ -24,7 +25,7 @@ const CODE_LENGTH = 6;
 const RESEND_COOLDOWN_SECONDS = 30;
 
 export default function VerifyEmailScreen({ navigation, route }: Props) {
-  const { email, name } = route.params;
+  const { email, name, data } = route.params;
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
@@ -65,11 +66,22 @@ export default function VerifyEmailScreen({ navigation, route }: Props) {
 
     setLoading(true);
     const result = await verifyEmail(email, code);
-    setLoading(false);
 
     if (result.success) {
+      // Only reachable from a brand-new registration (data comes from
+      // OnboardingComplete) - the account is authenticated for the first
+      // time now, so this is the first safe point to save the profile
+      // onboarding collected.
+      if (data) {
+        const profileResult = await createLifestyleProfile(data);
+        if (!profileResult.success) {
+          console.warn('createLifestyleProfile failed after verification:', profileResult.errorMessage);
+        }
+      }
+      setLoading(false);
       goHome();
     } else {
+      setLoading(false);
       setError(result.errorMessage ?? 'That code doesn’t look right. Try again.');
     }
   }

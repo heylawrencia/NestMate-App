@@ -34,13 +34,18 @@ export default function OnboardingCompleteScreen({ navigation, route }: Props) {
       return;
     }
 
-    setNeedsVerification(result.requiresVerification !== false);
+    const requiresVerification = result.requiresVerification !== false;
+    setNeedsVerification(requiresVerification);
 
-    // Non-fatal: the account exists either way: the matching profile can be
-    // finished later from Edit Profile if this fails.
-    const profileResult = await createLifestyleProfile(data);
-    if (!profileResult.success) {
-      console.warn('createLifestyleProfile failed:', profileResult.errorMessage);
+    // If verification is required, the account can't authenticate anything
+    // yet - including saving its own profile - so that has to wait until
+    // VerifyEmailScreen confirms the code. Only safe to save right away
+    // when the account is already verified (e.g. verification disabled).
+    if (!requiresVerification) {
+      const profileResult = await createLifestyleProfile(data);
+      if (!profileResult.success) {
+        console.warn('createLifestyleProfile failed:', profileResult.errorMessage);
+      }
     }
 
     setStatus('done');
@@ -90,7 +95,7 @@ export default function OnboardingCompleteScreen({ navigation, route }: Props) {
               {needsVerification ? (
                 <AppButton
                   title="Verify your email"
-                  onPress={() => navigation.navigate('VerifyEmail', { email: data.email, name: data.fullName })}
+                  onPress={() => navigation.navigate('VerifyEmail', { email: data.email, name: data.fullName, data })}
                 />
               ) : (
                 <AppButton
