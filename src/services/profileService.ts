@@ -27,8 +27,14 @@ interface BackendMyProfile {
   cleanliness: number | null;
   noiseTolerance: number | null;
   socialLevel: number | null;
+  budgetMin: number | null;
+  budgetMax: number | null;
+  city: string | null;
   smoker: boolean | null;
+  smokerOk: boolean | null;
+  hasPets: boolean | null;
   petsOk: boolean | null;
+  seekingType: string | null;
 }
 
 const GENDER_DISPLAY: Record<string, string> = {
@@ -79,9 +85,19 @@ function toUserProfile(p?: Partial<BackendMyProfile> | null): UserProfile {
     sleepSchedule: p?.sleepSchedule ? (SLEEP_SCHEDULE_DISPLAY[p.sleepSchedule] ?? p.sleepSchedule) : undefined,
     cleanliness: p?.cleanliness != null ? cleanlinessDisplay(p.cleanliness) : undefined,
     noiseLevel: p?.noiseTolerance != null ? noiseLevelDisplay(p.noiseTolerance) : undefined,
+    noiseTolerance: p?.noiseTolerance ?? undefined,
     socialEnergy: p?.socialLevel != null ? socialEnergyDisplay(p.socialLevel) : undefined,
+    socialLevel: p?.socialLevel ?? undefined,
     smoking: p?.smoker != null ? (p.smoker ? 'Smoker' : 'Non-Smoker') : undefined,
+    smoker: p?.smoker ?? undefined,
+    smokerOk: p?.smokerOk ?? undefined,
     petFriendly: p?.petsOk != null ? (p.petsOk ? 'Yes' : 'No') : undefined,
+    hasPets: p?.hasPets ?? undefined,
+    petsOk: p?.petsOk ?? undefined,
+    seekingType: p?.seekingType ?? undefined,
+    city: p?.city ?? undefined,
+    budgetMin: p?.budgetMin ?? undefined,
+    budgetMax: p?.budgetMax ?? undefined,
   };
 }
 
@@ -95,49 +111,25 @@ export async function fetchProfile(): Promise<UserProfile> {
   }
 }
 
-export async function updateProfile(update: UserProfileUpdate): Promise<UserProfile> {
-  const p = await api<BackendMyProfile>('/api/profiles/me', {
-    method: 'PUT',
-    body: {
-      fullName: update.fullName,
-      dateOfBirth: update.dateOfBirth ? update.dateOfBirth.slice(0, 10) : undefined,
-      bio: update.bio,
-      gender: update.gender !== undefined ? mapGender(update.gender) : undefined,
-      schoolLevel: update.schoolLevel,
-      avatarUri: update.avatarUri,
-      sleepSchedule: update.sleepSchedule !== undefined ? mapSleepSchedule(update.sleepSchedule) : undefined,
-      cleanliness: update.cleanliness !== undefined ? mapCleanliness(update.cleanliness) : undefined,
-      noiseTolerance: update.noiseLevel !== undefined ? mapNoiseTolerance(update.noiseLevel) : undefined,
-      socialLevel: update.socialEnergy !== undefined ? mapSocialLevel(update.socialEnergy) : undefined,
-      smoker: update.smoking !== undefined ? update.smoking === 'Smoker' : undefined,
-      smokerOk: update.smoking !== undefined ? update.smoking === 'Smoker' : undefined,
-      petsOk: update.petFriendly !== undefined ? update.petFriendly === 'Yes' : undefined,
-    },
-  });
-  return toUserProfile(p);
-}
-
-// ---------- Real lifestyle/matching profile (PUT /api/profiles/me) ----------
-
 type SleepSchedule = 'EARLY_BIRD' | 'FLEXIBLE' | 'NIGHT_OWL';
 type Gender = 'FEMALE' | 'MALE' | 'NON_BINARY' | 'PREFER_NOT_TO_SAY';
+type SeekingType = 'SEEKING_ROOM' | 'OFFERING_ROOM';
 
 function mapGender(value?: string): Gender {
-  switch (value) {
-    case 'Female': return 'FEMALE';
-    case 'Male': return 'MALE';
-    case 'Non-binary': return 'NON_BINARY';
-    default: return 'PREFER_NOT_TO_SAY';
-  }
+  if (value === 'Female' || value === 'FEMALE') return 'FEMALE';
+  if (value === 'Male' || value === 'MALE') return 'MALE';
+  if (value === 'Non-binary' || value === 'NON_BINARY') return 'NON_BINARY';
+  return 'PREFER_NOT_TO_SAY';
 }
 
 function mapSleepSchedule(value?: string): SleepSchedule {
-  if (value === 'Early Bird') return 'EARLY_BIRD';
-  if (value === 'Night Owl') return 'NIGHT_OWL';
+  if (value === 'Early Bird' || value === 'EARLY_BIRD') return 'EARLY_BIRD';
+  if (value === 'Night Owl' || value === 'NIGHT_OWL') return 'NIGHT_OWL';
   return 'FLEXIBLE';
 }
 
-function mapCleanliness(value?: string): number {
+function mapCleanliness(value?: string | number): number {
+  if (typeof value === 'number') return value;
   switch (value) {
     case 'Very Clean': return 5;
     case 'Clean': return 4;
@@ -147,7 +139,8 @@ function mapCleanliness(value?: string): number {
   }
 }
 
-function mapNoiseTolerance(value?: string): number {
+function mapNoiseTolerance(value?: string | number): number {
+  if (typeof value === 'number') return value;
   switch (value) {
     case 'Quiet': return 2;
     case 'Moderate': return 3;
@@ -156,7 +149,8 @@ function mapNoiseTolerance(value?: string): number {
   }
 }
 
-function mapSocialLevel(value?: string): number {
+function mapSocialLevel(value?: string | number): number {
+  if (typeof value === 'number') return value;
   switch (value) {
     case 'Very Social': return 5;
     case 'Social': return 4;
@@ -165,6 +159,50 @@ function mapSocialLevel(value?: string): number {
     case 'Very Reserved': return 1;
     default: return 3;
   }
+}
+
+function mapSeekingType(value?: string): SeekingType {
+  if (value === 'Offering a room' || value === 'OFFERING_ROOM') return 'OFFERING_ROOM';
+  return 'SEEKING_ROOM';
+}
+
+function mapYesNo(value?: string | boolean): boolean {
+  if (typeof value === 'boolean') return value;
+  return value === 'Yes';
+}
+
+function mapSmoker(value?: string | boolean): boolean {
+  if (typeof value === 'boolean') return value;
+  return value === 'Smoker';
+}
+
+export async function updateProfile(update: any): Promise<UserProfile> {
+  const lifestyle = update.lifestyle || {};
+
+  const p = await api<BackendMyProfile>('/api/profiles/me', {
+    method: 'PUT',
+    body: {
+      fullName: update.fullName,
+      dateOfBirth: update.dateOfBirth ? String(update.dateOfBirth).slice(0, 10) : undefined,
+      bio: update.bio,
+      gender: update.gender !== undefined ? mapGender(update.gender) : undefined,
+      schoolLevel: update.schoolLevel,
+      avatarUri: update.avatarUri,
+      sleepSchedule: mapSleepSchedule(update.sleepSchedule ?? lifestyle.sleepSchedule),
+      cleanliness: mapCleanliness(update.cleanliness ?? lifestyle.cleanliness),
+      noiseTolerance: mapNoiseTolerance(update.noiseLevel ?? update.noiseTolerance ?? lifestyle.noiseLevel),
+      socialLevel: mapSocialLevel(update.socialEnergy ?? update.socialLevel ?? lifestyle.socialEnergy),
+      smoker: mapSmoker(update.smoking ?? update.smoker ?? lifestyle.smoking),
+      smokerOk: mapYesNo(update.smokerOk ?? lifestyle.smokerOk),
+      hasPets: mapYesNo(update.hasPets ?? lifestyle.hasPets),
+      petsOk: mapYesNo(update.petFriendly ?? update.petsOk ?? lifestyle.petFriendly),
+      seekingType: mapSeekingType(update.seekingType ?? lifestyle.seekingType),
+      city: update.city || undefined,
+      budgetMin: update.budgetMin != null && update.budgetMin !== '' ? Number(update.budgetMin) : undefined,
+      budgetMax: update.budgetMax != null && update.budgetMax !== '' ? Number(update.budgetMax) : undefined,
+    },
+  });
+  return toUserProfile(p);
 }
 
 /**
