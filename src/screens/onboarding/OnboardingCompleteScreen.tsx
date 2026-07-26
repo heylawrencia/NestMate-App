@@ -67,7 +67,7 @@ export default function OnboardingCompleteScreen({ navigation, route }: Props) {
             <View style={styles.form}>
               <AppButton title="Try again" onPress={createAccount} />
               <View style={styles.buttonSpacer} />
-              <AppButton title="Go back" variant="outline" onPress={() => navigation.goBack()} />
+              <AppButton title="Back to Sign Up" variant="outline" onPress={() => navigation.navigate('SignUp')} />
             </View>
           </>
         ) : status === 'saving' ? (
