@@ -149,9 +149,16 @@ export default function HostelDetailScreen({ navigation, route }: Props) {
               </ElevatedCard>
 
               <AppButton
-                title="Enter & Verify Access Code"
-                onPress={() => navigation.navigate('AccessCode', { hostelId })}
+                title="Choose a room"
+                onPress={() => navigation.navigate('ChooseRoomType', { hostelId })}
               />
+
+              <TouchableOpacity
+                style={styles.secondaryLink}
+                onPress={() => navigation.navigate('AccessCode', { hostelId })}
+              >
+                <Text style={styles.secondaryLinkText}>Already paid? Enter your access code</Text>
+              </TouchableOpacity>
             </View>
           </ScrollView>
         ) : (
