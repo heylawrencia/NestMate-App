@@ -17,6 +17,8 @@ import { fetchHostelById } from '../services/hostelService';
 import { RoomType } from '../types/hostel';
 import { useDrawer } from '../context/DrawerContext';
 
+import { saveMyProfile } from '../services/profileService';
+
 type Props = CompositeScreenProps<
   NativeStackScreenProps<ExploreStackParamList, 'ChooseRoomType'>,
   NativeStackScreenProps<RootStackParamList>
@@ -31,6 +33,7 @@ export default function ChooseRoomTypeScreen({ navigation, route }: Props) {
   const { openDrawer } = useDrawer();
 
   const [selectedRoomTypeId, setSelectedRoomTypeId] = useState<string | undefined>();
+  const [submitting, setSubmitting] = useState(false);
 
   function renderRoomTypeRow(roomType: RoomType) {
     const isFull = roomType.bedsLeft === 0;
@@ -62,11 +65,22 @@ export default function ChooseRoomTypeScreen({ navigation, route }: Props) {
     );
   }
 
-  function handleContinue() {
+  async function handleContinue() {
     if (!selectedRoomTypeId) {
       return;
     }
-    navigation.navigate('Home', { screen: 'Matches' } as never);
+    setSubmitting(true);
+    try {
+      await saveMyProfile({
+        hostelId: Number(hostelId),
+        roomTypeId: selectedRoomTypeId,
+      });
+    } catch (e) {
+      console.warn('Could not save room selection:', e);
+    } finally {
+      setSubmitting(false);
+      navigation.navigate('Home', { screen: 'Matches', params: { refresh: Date.now() } } as never);
+    }
   }
 
   return (
@@ -96,7 +110,8 @@ export default function ChooseRoomTypeScreen({ navigation, route }: Props) {
               <AppButton
                 title="Find Roommate Matches"
                 onPress={handleContinue}
-                disabled={!selectedRoomTypeId}
+                disabled={!selectedRoomTypeId || submitting}
+                loading={submitting}
               />
             </>
           ) : (

@@ -200,6 +200,8 @@ export async function updateProfile(update: any): Promise<UserProfile> {
       city: update.city || undefined,
       budgetMin: update.budgetMin != null && update.budgetMin !== '' ? Number(update.budgetMin) : undefined,
       budgetMax: update.budgetMax != null && update.budgetMax !== '' ? Number(update.budgetMax) : undefined,
+      hostelId: update.hostelId != null && update.hostelId !== '' ? Number(update.hostelId) : undefined,
+      roomTypeId: update.roomTypeId || undefined,
     },
   });
   return toUserProfile(p);

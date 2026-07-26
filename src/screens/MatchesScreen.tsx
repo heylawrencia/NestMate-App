@@ -78,7 +78,7 @@ export default function MatchesScreen({ navigation }: Props) {
         ) : (
           <EmptyState
             icon="heart-outline"
-            title="No matches yet"
+            title="No compatible roommates found yet"
             description="Explore rooms and we'll surface roommates who fit your vibe."
           />
         )}
