@@ -108,7 +108,12 @@ export async function api<T>(
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
   });
 
-  if (response.status === 401 || response.status === 403) {
+  // 401 means the token itself is bad/expired - safe to log out globally.
+  // 403 can also mean "valid session, but this specific action isn't
+  // allowed" (e.g. email not verified yet) - logging out on that would wipe
+  // a perfectly good session and cascade into every other request failing
+  // the same way, since there'd be no token left to send at all.
+  if (response.status === 401) {
     onUnauthorized?.();
   }
 
