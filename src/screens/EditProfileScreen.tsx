@@ -61,6 +61,7 @@ export default function EditProfileScreen({ navigation }: Props) {
   const { data: profile, loading, error, reload } = useAsyncData(fetchMyProfile, []);
 
   const [avatarUri, setAvatarUri] = useState<string | undefined>();
+  const [fullName, setFullName] = useState('');
   const [city, setCity] = useState('');
   const [budgetMin, setBudgetMin] = useState('');
   const [budgetMax, setBudgetMax] = useState('');
@@ -82,19 +83,24 @@ export default function EditProfileScreen({ navigation }: Props) {
       return;
     }
     setAvatarUri(profile.avatarUri);
-    setCity(profile.city ?? '');
+    setFullName(profile.fullName ?? '');
+    setCity(profile.city ?? 'Kumasi');
     setBudgetMin(profile.budgetMin ? String(profile.budgetMin) : '');
     setBudgetMax(profile.budgetMax ? String(profile.budgetMax) : '');
     setBio(profile.bio ?? '');
-    setSleepSchedule(profile.sleepSchedule ? SLEEP_SCHEDULE_REVERSE[profile.sleepSchedule] : undefined);
-    setCleanliness(typeof profile.cleanliness === 'number' ? closestLabel(profile.cleanliness, CLEANLINESS_OPTIONS, CLEANLINESS_SCALE) : (profile.cleanliness ?? 'Average'));
-    setNoiseLevel(typeof profile.noiseTolerance === 'number' ? closestLabel(profile.noiseTolerance, NOISE_OPTIONS, NOISE_SCALE) : (profile.noiseLevel ?? 'Moderate'));
-    setSocialEnergy(closestLabel(profile.socialLevel ?? 3, SOCIAL_OPTIONS, SOCIAL_SCALE));
-    setSmoking(profile.smoker ? 'Smoker' : 'Non-Smoker');
+    setSleepSchedule(profile.sleepSchedule ?? 'Flexible');
+    setCleanliness(profile.cleanliness ?? 'Average');
+    setNoiseLevel(profile.noiseLevel ?? 'Moderate');
+    setSocialEnergy(profile.socialEnergy ?? 'Balanced');
+    setSmoking(profile.smoking ?? 'Non-Smoker');
     setSmokerOk(profile.smokerOk ? 'Yes' : 'No');
     setHasPets(profile.hasPets ? 'Yes' : 'No');
-    setPetFriendly(profile.petsOk ? 'Yes' : 'No');
-    setSeekingType(profile.seekingType ? SEEKING_TYPE_REVERSE[profile.seekingType] : undefined);
+    setPetFriendly(profile.petFriendly ?? 'Yes');
+    setSeekingType(
+      profile.seekingType === 'OFFERING_ROOM' || profile.seekingType === 'Offering a room'
+        ? 'Offering a room'
+        : 'Looking for a room',
+    );
   }, [profile]);
 
   async function handlePickAvatar() {
@@ -116,17 +122,15 @@ export default function EditProfileScreen({ navigation }: Props) {
   async function handleSave() {
     setSaveError(undefined);
     setSaving(true);
-    const uploadedAvatarUri = await ensureUploadedAvatar(avatarUri);
-    // buildProfileRequest takes an OnboardingData-shaped bag - `email` is unused by
-    // the mapping itself, so a placeholder here is harmless.
-    const request = buildProfileRequest({
-      email: '',
-      avatarUri: uploadedAvatarUri,
-      city,
-      budgetMin,
-      budgetMax,
-      bio,
-      lifestyle: {
+    try {
+      const uploadedAvatarUri = await ensureUploadedAvatar(avatarUri);
+      await saveMyProfile({
+        fullName,
+        avatarUri: uploadedAvatarUri,
+        city,
+        budgetMin,
+        budgetMax,
+        bio,
         sleepSchedule,
         cleanliness,
         noiseLevel,
@@ -136,15 +140,7 @@ export default function EditProfileScreen({ navigation }: Props) {
         hasPets,
         petFriendly,
         seekingType,
-      },
-    });
-    if (!request) {
-      setSaveError('Please fill in every field before saving.');
-      setSaving(false);
-      return;
-    }
-    try {
-      await saveMyProfile(request);
+      });
       navigation.goBack();
     } catch (err) {
       setSaveError(err instanceof ApiError ? err.message : 'Could not save your profile. Please try again.');
@@ -175,6 +171,7 @@ export default function EditProfileScreen({ navigation }: Props) {
             </TouchableOpacity>
 
             <View style={styles.form}>
+              <AppTextInput label="Full Name" value={fullName} onChangeText={setFullName} autoCapitalize="words" />
               <AppTextInput label="City" value={city} onChangeText={setCity} autoCapitalize="words" />
 
               <View style={styles.budgetRow}>

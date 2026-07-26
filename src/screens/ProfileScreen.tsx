@@ -74,7 +74,7 @@ export default function ProfileScreen({ navigation }: Props) {
                   </IconCircle>
                 </View>
 
-                <Text style={styles.name}>{email}</Text>
+                <Text style={styles.name}>{profile.fullName || email}</Text>
                 {profile.bio ? <Text style={styles.subtitle}>{profile.bio}</Text> : null}
 
                 <View style={styles.editButton}>
