@@ -1,17 +1,25 @@
 import React, { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import AppTextInput from '../components/AppTextInput';
 import AsyncBoundary from '../components/AsyncBoundary';
+import IconCircle from '../components/IconCircle';
 import ScreenHeader from '../components/ScreenHeader';
 import SelectField from '../components/SelectField';
 import { colors, spacing, typography } from '../theme';
 import { RootStackParamList } from '../navigation/types';
 import { useAsyncData } from '../hooks/useAsyncData';
-import { ApiError } from '../services/apiClient';
-import { buildProfileRequest, fetchMyProfile, saveMyProfile } from '../services/profileService';
+import { ApiError, resolveMediaUrl } from '../services/apiClient';
+import {
+  buildProfileRequest,
+  ensureUploadedAvatar,
+  fetchMyProfile,
+  saveMyProfile,
+} from '../services/profileService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EditProfile'>;
 
@@ -52,6 +60,7 @@ function closestLabel(value: number, options: string[], scale: number[]): string
 export default function EditProfileScreen({ navigation }: Props) {
   const { data: profile, loading, error, reload } = useAsyncData(fetchMyProfile, []);
 
+  const [avatarUri, setAvatarUri] = useState<string | undefined>();
   const [city, setCity] = useState('');
   const [budgetMin, setBudgetMin] = useState('');
   const [budgetMax, setBudgetMax] = useState('');
@@ -72,6 +81,7 @@ export default function EditProfileScreen({ navigation }: Props) {
     if (!profile) {
       return;
     }
+    setAvatarUri(profile.avatarUri);
     setCity(profile.city ?? '');
     setBudgetMin(profile.budgetMin ? String(profile.budgetMin) : '');
     setBudgetMax(profile.budgetMax ? String(profile.budgetMax) : '');
@@ -87,12 +97,31 @@ export default function EditProfileScreen({ navigation }: Props) {
     setSeekingType(profile.seekingType ? SEEKING_TYPE_REVERSE[profile.seekingType] : undefined);
   }, [profile]);
 
+  async function handlePickAvatar() {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled) {
+      setAvatarUri(result.assets[0].uri);
+    }
+  }
+
   async function handleSave() {
     setSaveError(undefined);
+    setSaving(true);
+    const uploadedAvatarUri = await ensureUploadedAvatar(avatarUri);
     // buildProfileRequest takes an OnboardingData-shaped bag - `email` is unused by
     // the mapping itself, so a placeholder here is harmless.
     const request = buildProfileRequest({
       email: '',
+      avatarUri: uploadedAvatarUri,
       city,
       budgetMin,
       budgetMax,
@@ -111,9 +140,9 @@ export default function EditProfileScreen({ navigation }: Props) {
     });
     if (!request) {
       setSaveError('Please fill in every field before saving.');
+      setSaving(false);
       return;
     }
-    setSaving(true);
     try {
       await saveMyProfile(request);
       navigation.goBack();
@@ -134,6 +163,16 @@ export default function EditProfileScreen({ navigation }: Props) {
               onBack={() => navigation.goBack()}
               rightAction={{ label: saving ? 'Saving…' : 'Save', onPress: handleSave }}
             />
+
+            <TouchableOpacity style={styles.avatarTouchable} onPress={handlePickAvatar} activeOpacity={0.8}>
+              <IconCircle size={88}>
+                {avatarUri ? (
+                  <Image source={{ uri: resolveMediaUrl(avatarUri) }} style={styles.avatarImage} />
+                ) : (
+                  <Ionicons name="camera" size={28} color={colors.textMuted} />
+                )}
+              </IconCircle>
+            </TouchableOpacity>
 
             <View style={styles.form}>
               <AppTextInput label="City" value={city} onChangeText={setCity} autoCapitalize="words" />
@@ -247,6 +286,14 @@ const styles = StyleSheet.create({
   },
   form: {
     width: '100%',
+  },
+  avatarTouchable: {
+    alignSelf: 'center',
+    marginVertical: spacing.lg,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   budgetRow: {
     flexDirection: 'row',

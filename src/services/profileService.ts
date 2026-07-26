@@ -243,21 +243,27 @@ export function buildProfileRequest(data: OnboardingData): any {
   return data;
 }
 
+/** Uploads a photo if it's still a local device URI (e.g. fresh from the picker);
+ * passes already-uploaded server URLs (relative or absolute) through untouched. */
+export async function ensureUploadedAvatar(uri?: string): Promise<string | undefined> {
+  if (!uri) return undefined;
+  if (/^https?:\/\//.test(uri) || uri.startsWith('/')) {
+    return uri;
+  }
+  try {
+    return await uploadAvatarPhoto(uri);
+  } catch (e) {
+    console.warn('Avatar upload failed, continuing without a photo:', e);
+    return undefined;
+  }
+}
+
 export async function createLifestyleProfile(
   data: OnboardingData,
 ): Promise<{ success: boolean; errorMessage?: string }> {
   const smoker = data.lifestyle?.smoking ? data.lifestyle.smoking !== 'Non-Smoker' : false;
 
-  const localAvatarUri = data.avatarUri ?? data.photos?.[0];
-  let avatarUri: string | undefined = localAvatarUri;
-  if (localAvatarUri && !/^https?:\/\//.test(localAvatarUri)) {
-    try {
-      avatarUri = await uploadAvatarPhoto(localAvatarUri);
-    } catch (e) {
-      console.warn('Avatar upload failed, continuing without a photo:', e);
-      avatarUri = undefined;
-    }
-  }
+  const avatarUri = await ensureUploadedAvatar(data.avatarUri ?? data.photos?.[0]);
 
   try {
     await api('/api/profiles/me', {
