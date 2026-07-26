@@ -18,6 +18,7 @@ import { colors, spacing, typography } from '../theme';
 import { RootStackParamList } from '../navigation/types';
 import { resendVerification, verifyEmail } from '../services/authService';
 import { createLifestyleProfile } from '../services/profileService';
+import { setToken as setStoredToken } from '../services/tokenStorage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VerifyEmail'>;
 
@@ -68,10 +69,9 @@ export default function VerifyEmailScreen({ navigation, route }: Props) {
     const result = await verifyEmail(email, code);
 
     if (result.success) {
-      // Only reachable from a brand-new registration (data comes from
-      // OnboardingComplete) - the account is authenticated for the first
-      // time now, so this is the first safe point to save the profile
-      // onboarding collected.
+      if (result.token) {
+        await setStoredToken(result.token);
+      }
       if (data) {
         const profileResult = await createLifestyleProfile(data);
         if (!profileResult.success) {

@@ -68,10 +68,18 @@ export function logout() {
   setToken(null);
 }
 
-/** Sets the account's verified flag - required before login will succeed. */
+/** Sets the account's verified flag - required before login will succeed. Stores returned token. */
 export async function verifyEmail(email: string, code: string): Promise<LoginResult> {
   try {
-    await api('/api/auth/verify-email', { method: 'POST', body: { email, code } });
+    const res = await api<BackendAuthResponse>('/api/auth/verify-email', { method: 'POST', body: { email, code } });
+    if (res && res.token) {
+      setToken(res.token);
+      return {
+        success: true,
+        token: res.token,
+        user: { userId: res.userId, email: res.email, role: res.role, verified: res.verified },
+      };
+    }
     return { success: true };
   } catch (e) {
     const message = e instanceof ApiError ? e.message : 'Could not verify. Check your connection.';
