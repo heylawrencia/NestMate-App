@@ -44,10 +44,7 @@
           "photosPermission": "NestMate uses your photos to build your profile and help prospective roommates identify you.",
           "cameraPermission": "NestMate uses your camera to capture profile photos directly in the app."
         }
-      ],
-      "expo-font",
-      "expo-secure-store",
-      "@react-native-community/datetimepicker"
+      ]
     ],
     "extra": {
       "eas": {
