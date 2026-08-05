@@ -10,7 +10,7 @@ import ElevatedCard from '../components/ElevatedCard';
 import GradientHeader from '../components/GradientHeader';
 import HeaderIconRow from '../components/HeaderIconRow';
 import IconCircle from '../components/IconCircle';
-import { colors, spacing, typography } from '../theme';
+import { colors, radius, space, type } from '../theme';
 import { ExploreStackParamList, RootStackParamList } from '../navigation/types';
 import { useAsyncData } from '../hooks/useAsyncData';
 import { fetchHostelById, getRoomType } from '../services/hostelService';
@@ -93,12 +93,7 @@ export default function AllocationScreen({ navigation, route }: Props) {
 
               <TouchableOpacity
                 style={styles.actionRow}
-                onPress={() =>
-                  navigation.navigate('Placeholder', {
-                    title: 'Allocation Letter',
-                    description: 'Downloading your allocation letter will be available soon.',
-                  })
-                }
+                onPress={() => (navigation as any).navigate('HostelList')}
               >
                 <Ionicons name="download-outline" size={18} color={colors.text} />
                 <Text style={styles.actionText}>Letter</Text>
@@ -122,79 +117,88 @@ export default function AllocationScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.surfaceTint,
+    backgroundColor: colors.background,
   },
   headerTitle: {
-    fontSize: typography.h1,
-    fontWeight: typography.weightBold,
+    fontFamily: type.h1.fontFamily,
+    fontSize: type.h1.fontSize,
+    fontWeight: '700',
     color: colors.white,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.lg,
   },
   pendingCard: {
     backgroundColor: '#FCEEDC',
-    marginBottom: spacing.lg,
+    marginBottom: space.lg,
   },
   pendingTitle: {
-    fontSize: typography.body,
-    fontWeight: typography.weightBold,
+    fontFamily: type.bodyStrong.fontFamily,
+    fontSize: 15,
+    fontWeight: '700',
     color: '#8A5A20',
-    marginTop: spacing.sm,
+    marginTop: space.sm,
     marginBottom: 2,
   },
   pendingSubtitle: {
-    fontSize: typography.caption,
+    fontFamily: type.caption.fontFamily,
+    fontSize: 13,
     color: '#8A5A20',
   },
   resultCard: {
-    backgroundColor: '#E3F5EE',
-    marginBottom: spacing.lg,
+    backgroundColor: colors.mintLight,
+    marginBottom: space.lg,
   },
   resultTitle: {
-    fontSize: typography.body,
-    fontWeight: typography.weightBold,
-    color: colors.success,
-    marginTop: spacing.sm,
+    fontFamily: type.bodyStrong.fontFamily,
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.mintDark,
+    marginTop: space.sm,
     marginBottom: 2,
   },
   resultSubtitle: {
-    fontSize: typography.caption,
-    color: colors.success,
+    fontFamily: type.caption.fontFamily,
+    fontSize: 13,
+    color: colors.mintDark,
   },
   sectionTitle: {
-    fontSize: typography.body,
-    fontWeight: typography.weightBold,
-    color: colors.text,
-    marginBottom: spacing.sm,
+    fontFamily: type.h3.fontFamily,
+    fontSize: type.h3.fontSize,
+    fontWeight: '600',
+    color: colors.ink,
+    marginBottom: space.sm,
   },
   avatarRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
+    gap: space.sm,
+    marginBottom: space.lg,
   },
   avatarInitial: {
-    fontSize: typography.body,
-    fontWeight: typography.weightBold,
+    fontFamily: type.bodyStrong.fontFamily,
+    fontSize: 15,
+    fontWeight: '700',
     color: colors.primary,
   },
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: space.sm,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
+    borderColor: colors.line,
+    borderRadius: radius.lg,
     backgroundColor: colors.white,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.sm,
+    paddingVertical: space.md,
+    paddingHorizontal: space.md,
+    marginBottom: space.sm,
   },
   actionText: {
-    fontSize: typography.body,
-    fontWeight: typography.weightMedium,
-    color: colors.text,
+    fontFamily: type.bodyStrong.fontFamily,
+    fontSize: 15,
+    fontWeight: '500',
+    color: colors.ink,
   },
 });
+

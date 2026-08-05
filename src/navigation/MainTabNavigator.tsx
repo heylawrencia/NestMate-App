@@ -4,33 +4,34 @@ import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { MainTabParamList, RootStackParamList } from './types';
-import { colors } from '../theme';
+import { colors, type } from '../theme';
 import { DrawerProvider } from '../context/DrawerContext';
 import HomeDrawerMenu, { DrawerMenuItem } from '../components/HomeDrawerMenu';
 import { displayNameFor } from '../utils/formatName';
 import { useAuth } from '../context/AuthContext';
 import HomeScreen from '../screens/HomeScreen';
-import ExploreStackNavigator from './ExploreStackNavigator';
+import HostelsStackNavigator from './HostelsStackNavigator';
 import ChatScreen from '../screens/ChatScreen';
 import MatchesScreen from '../screens/MatchesScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import ManagerDashboardScreen from '../screens/ManagerDashboardScreen';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-const TAB_ICONS: Record<keyof MainTabParamList, { active: string; inactive: string }> = {
-  HomeTab: { active: 'home', inactive: 'home-outline' },
-  Explore: { active: 'compass', inactive: 'compass-outline' },
-  Chat: { active: 'chatbubble', inactive: 'chatbubble-outline' },
-  Matches: { active: 'heart', inactive: 'heart-outline' },
-  Profile: { active: 'person', inactive: 'person-outline' },
-};
-
 export default function MainTabNavigator({ navigation }: Props) {
   const { email, logout } = useAuth();
   const firstName = displayNameFor(email ?? '');
   const [drawerVisible, setDrawerVisible] = useState(false);
+
+  // Read role from AuthContext (Task 6)
+  // For demo/dev default, role === 'MANAGER' renders Manage tab in position 3
+  const isManager = email?.toLowerCase().includes('manager');
+
+  // Unread badge counts (Task 7 - plumbing initialized to 0 until F5 & F7)
+  const unreadMessagesCount = 0;
+  const unreadNotificationsCount = 0;
 
   function closeDrawerThen(action: () => void | Promise<void>) {
     setDrawerVisible(false);
@@ -48,15 +49,15 @@ export default function MainTabNavigator({ navigation }: Props) {
     {
       key: 'my-matches',
       label: 'My Matches',
-      icon: 'heart-outline',
+      icon: 'sparkles-outline',
       badgeCount: 2,
       onPress: () => closeDrawerThen(() => navigation.navigate('Home', { screen: 'Matches' } as never)),
     },
     {
       key: 'chats',
       label: 'Chats',
-      icon: 'chatbubble-outline',
-      onPress: () => closeDrawerThen(() => navigation.navigate('Home', { screen: 'Chat' } as never)),
+      icon: 'chatbubbles-outline',
+      onPress: () => closeDrawerThen(() => navigation.navigate('Home', { screen: 'Chats' } as never)),
     },
     {
       key: 'settings',
@@ -75,30 +76,93 @@ export default function MainTabNavigator({ navigation }: Props) {
   return (
     <DrawerProvider openDrawer={() => setDrawerVisible(true)}>
       <Tab.Navigator
-        screenOptions={({ route: tabRoute }) => ({
+        screenOptions={({ route }) => ({
           headerShown: false,
-          tabBarShowLabel: false,
-          tabBarActiveTintColor: colors.text,
-          tabBarInactiveTintColor: colors.textMuted,
+          tabBarShowLabel: true,
+          tabBarLabelStyle: {
+            fontFamily: type.micro.fontFamily,
+            fontSize: 11,
+            lineHeight: 14,
+            letterSpacing: 0.4,
+            marginBottom: 4,
+          },
+          tabBarActiveTintColor: colors.primary,
+          tabBarInactiveTintColor: colors.inkFaint,
           tabBarStyle: {
-            borderTopColor: colors.border,
             height: 64,
-            paddingTop: 8,
-            paddingBottom: 12,
+            paddingTop: 6,
+            backgroundColor: colors.surface,
+            borderTopColor: colors.line,
+            borderTopWidth: 1,
           },
           tabBarIcon: ({ focused, color, size }) => {
-            const icons = TAB_ICONS[tabRoute.name as keyof MainTabParamList];
-            return (
-              <Ionicons name={(focused ? icons.active : icons.inactive) as never} size={size} color={color} />
-            );
+            let iconName: keyof typeof Ionicons.glyphMap = 'home-outline';
+
+            if (route.name === 'HomeTab') {
+              iconName = focused ? 'home' : 'home-outline';
+            } else if (route.name === 'HostelsStack') {
+              iconName = focused ? 'business' : 'business-outline';
+            } else if (route.name === 'Matches') {
+              iconName = focused ? 'sparkles' : 'sparkles-outline';
+            } else if (route.name === 'Manage') {
+              iconName = focused ? 'briefcase' : 'briefcase-outline';
+            } else if (route.name === 'Chats' || route.name === 'Chat') {
+              iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
+            } else if (route.name === 'Profile') {
+              iconName = focused ? 'person' : 'person-outline';
+            }
+
+            return <Ionicons name={iconName} size={22} color={color} />;
           },
         })}
       >
-        <Tab.Screen name="HomeTab" component={HomeScreen} />
-        <Tab.Screen name="Explore" component={ExploreStackNavigator} />
-        <Tab.Screen name="Chat" component={ChatScreen} />
-        <Tab.Screen name="Matches" component={MatchesScreen} />
-        <Tab.Screen name="Profile" component={ProfileScreen} />
+        <Tab.Screen
+          name="HomeTab"
+          component={HomeScreen}
+          options={{
+            tabBarLabel: 'Home',
+            tabBarBadge: unreadNotificationsCount > 0 ? unreadNotificationsCount : undefined,
+          }}
+        />
+        <Tab.Screen
+          name="HostelsStack"
+          component={HostelsStackNavigator}
+          options={{
+            tabBarLabel: 'Hostels',
+          }}
+        />
+        {isManager ? (
+          <Tab.Screen
+            name="Manage"
+            component={(props: any) => <ManagerDashboardScreen {...props} />}
+            options={{
+              tabBarLabel: 'Manage',
+            }}
+          />
+        ) : (
+          <Tab.Screen
+            name="Matches"
+            component={(props: any) => <MatchesScreen {...props} />}
+            options={{
+              tabBarLabel: 'Matches',
+            }}
+          />
+        )}
+        <Tab.Screen
+          name="Chats"
+          component={(props: any) => <ChatScreen {...props} />}
+          options={{
+            tabBarLabel: 'Chats',
+            tabBarBadge: unreadMessagesCount > 0 ? unreadMessagesCount : undefined,
+          }}
+        />
+        <Tab.Screen
+          name="Profile"
+          component={ProfileScreen}
+          options={{
+            tabBarLabel: 'Profile',
+          }}
+        />
       </Tab.Navigator>
 
       <HomeDrawerMenu

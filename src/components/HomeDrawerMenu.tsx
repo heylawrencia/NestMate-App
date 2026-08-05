@@ -1,9 +1,10 @@
 import React from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import IconCircle from './IconCircle';
+import { resolveMediaUrl } from '../services/apiClient';
 import { colors, shadows, spacing, typography } from '../theme';
 
 export interface DrawerMenuItem {
@@ -19,6 +20,7 @@ interface HomeDrawerMenuProps {
   visible: boolean;
   onClose: () => void;
   name: string;
+  avatarUri?: string;
   verified?: boolean;
   items: DrawerMenuItem[];
   onLogOut: () => void;
@@ -28,6 +30,7 @@ export default function HomeDrawerMenu({
   visible,
   onClose,
   name,
+  avatarUri,
   verified,
   items,
   onLogOut,
@@ -45,9 +48,13 @@ export default function HomeDrawerMenu({
           ]}
         >
           <View style={styles.profileRow}>
-            <IconCircle size={48} backgroundColor={colors.primaryLight}>
-              <Text style={styles.initial}>{initial}</Text>
-            </IconCircle>
+            {avatarUri ? (
+              <Image source={{ uri: resolveMediaUrl(avatarUri) }} style={styles.drawerAvatarImage} />
+            ) : (
+              <IconCircle size={48} backgroundColor={colors.primaryLight}>
+                <Text style={styles.initial}>{initial}</Text>
+              </IconCircle>
+            )}
             <View style={styles.profileText}>
               <Text style={styles.name} numberOfLines={1}>
                 {name}
@@ -124,6 +131,11 @@ const styles = StyleSheet.create({
     fontSize: typography.h2,
     fontWeight: typography.weightBold,
     color: colors.primary,
+  },
+  drawerAvatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
   profileText: {
     flex: 1,

@@ -1,193 +1,180 @@
+/**
+ * LoginScreen — Redesigned login surface (Spec §5.2)
+ *
+ * Features 72pt logo badge, inline validation errors, PasswordField, and zero Google/OAuth buttons.
+ */
+
 import React, { useState } from 'react';
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import AppTextInput from '../components/AppTextInput';
 import AppButton from '../components/AppButton';
-import ScreenHeader from '../components/ScreenHeader';
-import { colors, spacing, typography } from '../theme';
-import { RootStackParamList } from '../navigation/types';
+import AppTextInput from '../components/AppTextInput';
+import PasswordField from '../components/PasswordField';
 import { useAuth } from '../context/AuthContext';
+import { RootStackParamList } from '../navigation/types';
+import { colors, elevation, radius, space, type } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-interface FormErrors {
-  email?: string;
-  password?: string;
-}
-
 export default function LoginScreen({ navigation }: Props) {
   const { login } = useAuth();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState<FormErrors>({});
-  const [formError, setFormError] = useState<string | undefined>();
-  const [needsVerification, setNeedsVerification] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<{ email?: string; password?: string; form?: string }>({});
+  const [needsVerification, setNeedsVerification] = useState(false);
 
-  function validate(): boolean {
-    const nextErrors: FormErrors = {};
-
+  const validate = () => {
+    const newErrors: { email?: string; password?: string } = {};
     if (!email.trim()) {
-      nextErrors.email = 'Email is required.';
-    } else if (!EMAIL_REGEX.test(email.trim())) {
-      nextErrors.email = 'Enter a valid email address.';
+      newErrors.email = 'Email address is required';
+    } else if (!/\S+@\S+\.\S+/.test(email.trim())) {
+      newErrors.email = 'Enter a valid email address';
     }
 
     if (!password) {
-      nextErrors.password = 'Password is required.';
-    } else if (password.length < 6) {
-      nextErrors.password = 'Password must be at least 6 characters.';
+      newErrors.password = 'Password is required';
     }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
-    setErrors(nextErrors);
-    return Object.keys(nextErrors).length === 0;
-  }
-
-  async function handleLogin() {
-    setFormError(undefined);
+  const handleLogin = async () => {
+    setErrors({});
     setNeedsVerification(false);
-
-    if (!validate()) {
-      return;
-    }
+    if (!validate()) return;
 
     setLoading(true);
     const result = await login(email.trim(), password);
     setLoading(false);
 
     if (result.success) {
-      if (result.user?.role === 'MANAGER') {
-        navigation.reset({ index: 0, routes: [{ name: 'ManagerDashboard', params: { email: email.trim() } }] });
-      } else {
-        navigation.reset({ index: 0, routes: [{ name: 'Home', params: { email: email.trim() } }] });
-      }
+      (navigation as any).reset({
+        index: 0,
+        routes: [{ name: 'Home', params: { email: email.trim() } }],
+      });
+    } else if (result.needsVerification || result.requiresVerification) {
+      setNeedsVerification(true);
+      setErrors({ form: 'Your email address is not verified yet.' });
     } else {
-      setFormError(result.errorMessage ?? 'Something went wrong. Please try again.');
-      setNeedsVerification(Boolean(result.needsVerification));
+      setErrors({ form: result.errorMessage || 'Invalid email or password.' });
     }
-  }
+  };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaContainer style={styles.container}>
       <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <ScreenHeader
-            title="Log In"
-            onBack={() =>
-              navigation.canGoBack() ? navigation.goBack() : navigation.replace('GetStarted')
-            }
-          />
+          {/* Top Logo Badge */}
+          <View style={styles.headerContainer}>
+            <View style={styles.logoBadge}>
+              <Image
+                source={require('../../assets/logo.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+            </View>
+            <Text style={styles.headingTitle}>Welcome back</Text>
+            <Text style={styles.headingSubhead}>Sign in to continue finding your ideal room</Text>
+          </View>
 
-          <View style={styles.form}>
+          {/* Form Card */}
+          <View style={styles.card}>
             <AppTextInput
               label="Email"
-              placeholder="you@example.com"
+              placeholder="you@knust.edu.gh"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(text) => {
+                setEmail(text);
+                if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
+              }}
               error={errors.email}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
             />
 
-            <AppTextInput
+            <PasswordField
               label="Password"
-              placeholder="Your password"
+              placeholder="Enter your password"
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(text) => {
+                setPassword(text);
+                if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
+              }}
               error={errors.password}
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-              autoCorrect={false}
-              rightAccessory={
-                <TouchableOpacity
-                  onPress={() => setShowPassword((prev) => !prev)}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Ionicons
-                    name={showPassword ? 'eye-off' : 'eye'}
-                    size={20}
-                    color={colors.textMuted}
-                  />
-                </TouchableOpacity>
-              }
+              showStrengthMeter={false}
             />
 
             <TouchableOpacity
-              style={styles.forgotPassword}
+              style={styles.forgotPasswordRow}
               onPress={() => navigation.navigate('ForgotPassword')}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+              <Text style={styles.forgotPasswordText}>Forgot password?</Text>
             </TouchableOpacity>
 
-            {formError ? <Text style={styles.formError}>{formError}</Text> : null}
+            {errors.form ? <Text style={styles.inlineFormError}>{errors.form}</Text> : null}
+
             {needsVerification ? (
               <View style={styles.verifyPrompt}>
                 <AppButton
-                  title="Verify your email"
-                  variant="outline"
+                  title="Verify your email now"
+                  variant="secondary"
+                  size="md"
                   onPress={() => navigation.navigate('VerifyEmail', { email: email.trim() })}
                 />
               </View>
             ) : null}
 
-            <AppButton title="Log In" onPress={handleLogin} loading={loading} />
-
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or</Text>
-              <View style={styles.dividerLine} />
+            <View style={styles.actionRow}>
+              <AppButton
+                title="Log in"
+                onPress={handleLogin}
+                loading={loading}
+                variant="primary"
+                size="lg"
+              />
             </View>
+          </View>
 
-            <AppButton
-              title="Continue with Google"
-              variant="outline"
-              onPress={() => {}}
-              icon={<Ionicons name="logo-google" size={18} color={colors.text} />}
-            />
-            <View style={styles.spacer} />
-            <AppButton
-              title="Continue with Apple"
-              variant="outline"
-              onPress={() => {}}
-              icon={<Ionicons name="logo-apple" size={18} color={colors.text} />}
-            />
-
-            <View style={styles.signUpRow}>
-              <Text style={styles.signUpText}>Don&apos;t have an account? </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
-                <Text style={styles.signUpLink}>Sign up</Text>
-              </TouchableOpacity>
-            </View>
+          {/* Footer Navigation */}
+          <View style={styles.footerRow}>
+            <Text style={styles.footerText}>New here? </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
+              <Text style={styles.footerLink}>Create an account</Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </SafeAreaContainer>
   );
 }
 
+function SafeAreaContainer({ children, style }: { children: React.ReactNode; style: any }) {
+  return <View style={style}>{children}</View>;
+}
+
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
     backgroundColor: colors.background,
   },
@@ -196,60 +183,86 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
+    paddingHorizontal: space.lg,
+    paddingTop: space.xxl,
+    paddingBottom: space.xl,
+    justifyContent: 'center',
   },
-  form: {
-    width: '100%',
+  headerContainer: {
+    alignItems: 'center',
+    marginBottom: space.xl,
   },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginBottom: spacing.lg,
+  logoBadge: {
+    width: 72,
+    height: 72,
+    borderRadius: radius.xl,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: space.lg,
   },
-  forgotPasswordText: {
-    fontSize: typography.caption,
-    color: colors.primary,
-    fontWeight: typography.weightMedium,
+  logoImage: {
+    width: 48,
+    height: 48,
   },
-  formError: {
-    color: colors.error,
-    fontSize: typography.caption,
-    marginBottom: spacing.md,
+  headingTitle: {
+    fontFamily: type.display.fontFamily,
+    fontSize: type.display.fontSize,
+    color: colors.ink,
+    textAlign: 'center',
+    marginBottom: space.xs,
+  },
+  headingSubhead: {
+    fontFamily: type.body.fontFamily,
+    fontSize: type.body.fontSize,
+    color: colors.inkMuted,
     textAlign: 'center',
   },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: space.xl,
+    ...elevation.card,
+    marginBottom: space.xl,
+  },
+  forgotPasswordRow: {
+    alignSelf: 'flex-end',
+    marginBottom: space.md,
+    marginTop: -space.xs,
+  },
+  forgotPasswordText: {
+    fontFamily: type.caption.fontFamily,
+    fontSize: 13,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  inlineFormError: {
+    fontFamily: type.caption.fontFamily,
+    fontSize: 13,
+    color: colors.danger,
+    textAlign: 'center',
+    marginBottom: space.md,
+  },
   verifyPrompt: {
-    marginBottom: spacing.md,
+    marginBottom: space.md,
   },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: spacing.lg,
+  actionRow: {
+    marginTop: space.xs,
   },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.border,
-  },
-  dividerText: {
-    marginHorizontal: spacing.md,
-    fontSize: typography.caption,
-    color: colors.textMuted,
-  },
-  spacer: {
-    height: spacing.md,
-  },
-  signUpRow: {
+  footerRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: spacing.lg,
+    alignItems: 'center',
   },
-  signUpText: {
-    fontSize: typography.body,
-    color: colors.textMuted,
+  footerText: {
+    fontFamily: type.body.fontFamily,
+    fontSize: 15,
+    color: colors.inkMuted,
   },
-  signUpLink: {
-    fontSize: typography.body,
+  footerLink: {
+    fontFamily: type.bodyStrong.fontFamily,
+    fontSize: 15,
     color: colors.primary,
-    fontWeight: typography.weightBold,
+    fontWeight: '600',
   },
 });

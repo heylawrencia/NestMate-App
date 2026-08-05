@@ -1,5 +1,19 @@
-import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+/**
+ * ChooseRoomTypeScreen — Illustrated room capacity selection cards (Spec §7.3)
+ *
+ * Displays room types as illustrated capacity cards:
+ * "2 in a room · GH₵3,200/yr · 6 beds free"
+ */
+
+import React from 'react';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CompositeScreenProps } from '@react-navigation/native';
@@ -7,103 +21,92 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import AppButton from '../components/AppButton';
 import AsyncBoundary from '../components/AsyncBoundary';
-import GradientHeader from '../components/GradientHeader';
-import HeaderIconRow from '../components/HeaderIconRow';
-import SelectableCard from '../components/SelectableCard';
-import { colors, spacing, typography } from '../theme';
-import { ExploreStackParamList, RootStackParamList } from '../navigation/types';
+import IconCircle from '../components/IconCircle';
+import Skeleton from '../components/Skeleton';
 import { useAsyncData } from '../hooks/useAsyncData';
+import { HostelsStackParamList, RootStackParamList } from '../navigation/types';
 import { fetchHostelById } from '../services/hostelService';
+import { colors, elevation, radius, space, type } from '../theme';
 import { RoomType } from '../types/hostel';
-import { useDrawer } from '../context/DrawerContext';
 
 type Props = CompositeScreenProps<
-  NativeStackScreenProps<ExploreStackParamList, 'ChooseRoomType'>,
+  NativeStackScreenProps<HostelsStackParamList, 'ChooseRoomType'>,
   NativeStackScreenProps<RootStackParamList>
 >;
 
-export default function ChooseRoomTypeScreen({ navigation, route }: Props) {
+export default function ChooseRoomTypeScreen({ route, navigation }: Props) {
   const { hostelId } = route.params;
-  const { data: hostel, loading, error, reload } = useAsyncData(
-    () => fetchHostelById(hostelId),
-    [hostelId],
-  );
-  const { openDrawer } = useDrawer();
 
-  const [selectedRoomTypeId, setSelectedRoomTypeId] = useState<string | undefined>();
-
-  function renderRoomTypeRow(roomType: RoomType) {
-    const isFull = roomType.bedsLeft === 0;
-    const isSelected = roomType.id === selectedRoomTypeId;
-
-    return (
-      <SelectableCard
-        key={roomType.id}
-        selected={isSelected}
-        onPress={() => setSelectedRoomTypeId(roomType.id)}
-      >
-        <View style={styles.roomTypeRow}>
-          <View style={styles.roomTypeTextGroup}>
-            <Text style={styles.roomTypeLabel}>{roomType.label}</Text>
-            <Text style={styles.roomTypeMeta}>
-              GH₵{roomType.pricePerYear.toLocaleString()}/yr
-              {isFull
-                ? ' · Full — join the waitlist'
-                : roomType.studentsMatching
-                ? ` · ${roomType.studentsMatching} students matching`
-                : ''}
-            </Text>
-          </View>
-          <View style={[styles.radio, isSelected && styles.radioSelected]}>
-            {isSelected ? <View style={styles.radioDot} /> : null}
-          </View>
-        </View>
-      </SelectableCard>
-    );
-  }
-
-  function handleContinue() {
-    if (!selectedRoomTypeId) {
-      return;
-    }
-    navigation.navigate('Home', { screen: 'Matches' } as never);
-  }
+  const {
+    data: hostel,
+    loading,
+    error,
+    reload,
+  } = useAsyncData(() => fetchHostelById(hostelId), [hostelId]);
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
-      <GradientHeader>
-        <HeaderIconRow
-          onBack={() => navigation.goBack()}
-          onMenuPress={openDrawer}
-          onNotificationsPress={() => navigation.navigate('Notifications')}
-        />
-        <Text style={styles.headerTitle}>Choose room type</Text>
-      </GradientHeader>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.headerRow}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <Ionicons name="chevron-back" size={24} color={colors.ink} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Select Room Type</Text>
+      </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <AsyncBoundary loading={loading} error={error} onRetry={reload}>
-          {hostel ? (
-            <>
-              <View style={styles.verifiedBadge}>
-                <Ionicons name="business-outline" size={16} color={colors.success} />
-                <Text style={styles.verifiedText}>{hostel.shortName}</Text>
-              </View>
+      <AsyncBoundary loading={loading} error={error} onRetry={reload}>
+        {loading ? (
+          <View style={styles.skeletonContainer}>
+            <Skeleton variant="card" height={100} />
+            <Skeleton variant="card" height={100} />
+          </View>
+        ) : hostel ? (
+          <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <Text style={styles.hostelName}>{hostel.name}</Text>
+            <Text style={styles.subhead}>Choose your preferred room capacity for this academic year</Text>
 
-              <Text style={styles.subtitle}>What room size do you want?</Text>
+            <View style={styles.cardsContainer}>
+              {hostel.roomTypes.map((rt: RoomType) => (
+                <Pressable
+                  key={rt.id}
+                  style={({ pressed }) => [
+                    styles.capacityCard,
+                    pressed && styles.cardPressed,
+                    rt.bedsLeft <= 0 && styles.cardDisabled,
+                  ]}
+                  disabled={rt.bedsLeft <= 0}
+                  onPress={() =>
+                    navigation.navigate('PickRoom', {
+                      hostelId: hostel.id,
+                      roomTypeId: rt.id,
+                    })
+                  }
+                >
+                  <IconCircle size={48} backgroundColor={colors.primaryLight}>
+                    <Ionicons name="people" size={24} color={colors.primary} />
+                  </IconCircle>
 
-              <View style={styles.roomTypeList}>{hostel.roomTypes.map(renderRoomTypeRow)}</View>
+                  <View style={styles.cardTextCol}>
+                    <Text style={styles.capacityTitle}>{rt.label}</Text>
+                    <Text style={styles.capacitySubtext}>
+                      GH₵{rt.pricePerYear.toLocaleString()}/yr ·{' '}
+                      <Text
+                        style={{
+                          color: rt.bedsLeft > 0 ? colors.primary : colors.inkMuted,
+                          fontWeight: '600',
+                        }}
+                      >
+                        {rt.bedsLeft > 0 ? `${rt.bedsLeft} beds free` : 'Fully booked'}
+                      </Text>
+                    </Text>
+                  </View>
 
-              <AppButton
-                title="Find Roommate Matches"
-                onPress={handleContinue}
-                disabled={!selectedRoomTypeId}
-              />
-            </>
-          ) : (
-            <Text style={styles.notFoundText}>Hostel not found.</Text>
-          )}
-        </AsyncBoundary>
-      </ScrollView>
+                  <Ionicons name="chevron-forward" size={20} color={colors.inkMuted} />
+                </Pressable>
+              ))}
+            </View>
+          </ScrollView>
+        ) : null}
+      </AsyncBoundary>
     </SafeAreaView>
   );
 }
@@ -111,85 +114,81 @@ export default function ChooseRoomTypeScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.surfaceTint,
+    backgroundColor: colors.background,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: space.lg,
+    paddingVertical: space.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
+  },
+  backBtn: {
+    padding: space.xs,
+    marginRight: space.sm,
   },
   headerTitle: {
-    fontSize: typography.h1,
-    fontWeight: typography.weightBold,
-    color: colors.white,
+    fontFamily: type.h2.fontFamily,
+    fontSize: type.h2.fontSize,
+    color: colors.ink,
+    fontWeight: '700',
+  },
+  skeletonContainer: {
+    padding: space.lg,
+    gap: space.md,
   },
   scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
+    padding: space.lg,
   },
-  verifiedBadge: {
+  hostelName: {
+    fontFamily: type.h1.fontFamily,
+    fontSize: type.h1.fontSize,
+    color: colors.ink,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  subhead: {
+    fontFamily: type.caption.fontFamily,
+    fontSize: 14,
+    color: colors.inkMuted,
+    marginBottom: space.xl,
+  },
+  cardsContainer: {
+    gap: space.md,
+  },
+  capacityCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: space.lg,
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: spacing.xs,
-    backgroundColor: '#E3F5EE',
-    borderRadius: 20,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    marginBottom: spacing.lg,
-  },
-  verifiedText: {
-    fontSize: typography.caption,
-    fontWeight: typography.weightBold,
-    color: colors.success,
-  },
-  subtitle: {
-    fontSize: typography.body,
-    fontWeight: typography.weightMedium,
-    color: colors.text,
-    marginBottom: spacing.md,
-  },
-  roomTypeList: {
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
-  },
-  roomTypeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  roomTypeTextGroup: {
-    flex: 1,
-  },
-  roomTypeLabel: {
-    fontSize: typography.body,
-    fontWeight: typography.weightBold,
-    color: colors.text,
-    marginBottom: 2,
-  },
-  roomTypeMeta: {
-    fontSize: typography.caption,
-    color: colors.textMuted,
-  },
-  radio: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
     borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: spacing.sm,
+    borderColor: colors.line,
+    ...elevation.card,
   },
-  radioSelected: {
-    borderColor: colors.primary,
+  cardPressed: {
+    opacity: 0.9,
+    backgroundColor: colors.surfaceTint,
   },
-  radioDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.primary,
+  cardDisabled: {
+    opacity: 0.5,
   },
-  notFoundText: {
-    fontSize: typography.body,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: spacing.xl,
+  cardTextCol: {
+    flex: 1,
+    marginLeft: space.md,
+    marginRight: space.sm,
+  },
+  capacityTitle: {
+    fontFamily: type.h3.fontFamily,
+    fontSize: type.h3.fontSize,
+    color: colors.ink,
+    fontWeight: '600',
+  },
+  capacitySubtext: {
+    fontFamily: type.caption.fontFamily,
+    fontSize: 13,
+    color: colors.inkMuted,
+    marginTop: 4,
   },
 });

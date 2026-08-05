@@ -1,8 +1,30 @@
+/**
+ * NestMate v2 Design System — Spacing & Radius Tokens (Spec §3.4)
+ */
+export const space = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  xxl: 32,
+  xxxl: 48,
+};
+
+export const radius = {
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  pill: 999,
+};
+
+// Backward compatibility alias for pre-F2 components
 export const spacing = {
   xs: 4,
   sm: 8,
-  md: 16,
-  lg: 24,
-  xl: 32,
-  xxl: 48,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  xxl: 32,
 };

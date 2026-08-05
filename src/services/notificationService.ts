@@ -46,3 +46,11 @@ export async function fetchNotifications(): Promise<NotificationItem[]> {
 export async function markAllNotificationsRead(): Promise<void> {
   await apiClient.post('/api/notifications/read-all');
 }
+
+export async function markNotificationRead(id: string): Promise<void> {
+  try {
+    await apiClient.post(`/api/notifications/${id}/read`);
+  } catch (e) {
+    // ignore
+  }
+}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -8,6 +8,7 @@ import DetailRow from '../components/DetailRow';
 import ElevatedCard from '../components/ElevatedCard';
 import ScreenHeader from '../components/ScreenHeader';
 import SectionLabel from '../components/SectionLabel';
+import { useAuth } from '../context/AuthContext';
 import { colors, spacing, typography } from '../theme';
 import { RootStackParamList } from '../navigation/types';
 import { useAsyncData } from '../hooks/useAsyncData';
@@ -17,11 +18,27 @@ import { forgotPassword } from '../services/authService';
 type Props = NativeStackScreenProps<RootStackParamList, 'Account'>;
 
 export default function AccountScreen({ navigation }: Props) {
+  const { logout } = useAuth();
   const { data: profile, loading, error, reload } = useAsyncData(fetchProfile, []);
   const [sendingCode, setSendingCode] = useState(false);
 
   function handleLogOut() {
-    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+    Alert.alert(
+      'Log Out',
+      'Are you sure you want to log out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Log Out',
+          style: 'destructive',
+          onPress: async () => {
+            await logout();
+            navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+          },
+        },
+      ],
+      { cancelable: true }
+    );
   }
 
   async function handleChangePassword() {
@@ -70,12 +87,7 @@ export default function AccountScreen({ navigation }: Props) {
               title="Active sessions"
               subtitle="1 device signed in"
               isLast
-              onPress={() =>
-                navigation.navigate('Placeholder', {
-                  title: 'Active sessions',
-                  description: 'Managing your signed-in devices will be available soon.',
-                })
-              }
+              onPress={() => (navigation as any).navigate('Privacy')}
             />
           </ElevatedCard>
 
@@ -87,12 +99,7 @@ export default function AccountScreen({ navigation }: Props) {
               title="Delete account"
               destructive
               isLast
-              onPress={() =>
-                navigation.navigate('Placeholder', {
-                  title: 'Delete account',
-                  description: "Account deletion isn't available yet. Contact support if you need help with this.",
-                })
-              }
+              onPress={() => (navigation as any).navigate('HelpSupport')}
             />
           </ElevatedCard>
         </ScrollView>

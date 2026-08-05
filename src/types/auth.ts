@@ -1,6 +1,7 @@
 export interface AuthUser {
   userId: number;
   email: string;
+  fullName?: string;
   role?: 'STUDENT' | 'MANAGER';
   verified?: boolean;
 }

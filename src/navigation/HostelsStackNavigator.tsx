@@ -1,8 +1,8 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-import { ExploreStackParamList } from './types';
-import DiscoveryScreen from '../screens/DiscoveryScreen';
+import { HostelsStackParamList } from './types';
+import HostelListScreen from '../screens/HostelListScreen';
 import HostelDetailScreen from '../screens/HostelDetailScreen';
 import AccessCodeScreen from '../screens/AccessCodeScreen';
 import CodeVerifiedScreen from '../screens/CodeVerifiedScreen';
@@ -15,12 +15,12 @@ import RoommateProfileScreen from '../screens/RoommateProfileScreen';
 import RoommateGroupScreen from '../screens/RoommateGroupScreen';
 import AllocationScreen from '../screens/AllocationScreen';
 
-const Stack = createNativeStackNavigator<ExploreStackParamList>();
+const Stack = createNativeStackNavigator<HostelsStackParamList>();
 
-export default function ExploreStackNavigator() {
+export default function HostelsStackNavigator() {
   return (
-    <Stack.Navigator initialRouteName="ExploreList" screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="ExploreList" component={DiscoveryScreen} />
+    <Stack.Navigator initialRouteName="HostelList" screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="HostelList" component={HostelListScreen} />
       <Stack.Screen name="HostelDetail" component={HostelDetailScreen} />
       <Stack.Screen name="AccessCode" component={AccessCodeScreen} />
       <Stack.Screen name="CodeVerified" component={CodeVerifiedScreen} />

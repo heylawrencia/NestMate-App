@@ -1,3 +1,10 @@
+/**
+ * GetStartedScreen — Welcome landing screen (Spec §5.1 & §3.1)
+ *
+ * Features full-bleed upper 55% illustration carousel, headline, concise value proposition,
+ * primary [Create account] button, and ghost [I already have an account] button.
+ */
+
 import React, { useEffect, useRef, useState } from 'react';
 import {
   FlatList,
@@ -10,14 +17,13 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import AppButton from '../components/AppButton';
-import { spacing, typography } from '../theme';
 import { RootStackParamList } from '../navigation/types';
+import { colors, radius, space, type } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'GetStarted'>;
 
@@ -25,37 +31,35 @@ interface Slide {
   key: string;
   image: number;
   title: string;
-  description: string;
 }
 
 const SLIDES: Slide[] = [
   {
     key: 'roomie1',
     image: require('../../assets/roomie1.png'),
-    title: 'Find your perfect roommates',
-    description: 'Connect with verified people who match your lifestyle and vibe.',
+    title: 'Match with compatible roommates',
   },
   {
     key: 'roomie2',
     image: require('../../assets/roomie2.png'),
-    title: 'Discover your next home',
-    description: 'Browse listings that fit your budget and location, hassle-free.',
+    title: 'Explore verified student hostels',
   },
   {
     key: 'roomie3',
     image: require('../../assets/roomie3.png'),
-    title: 'Build your community',
-    description: 'Turn strangers into roommates, and roommates into friends.',
+    title: 'Secure your room effortlessly',
   },
 ];
 
-const AUTO_SLIDE_INTERVAL_MS = 3000;
+const AUTO_SLIDE_INTERVAL_MS = 3500;
 
 export default function GetStartedScreen({ navigation }: Props) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [activeIndex, setActiveIndex] = useState(0);
   const listRef = useRef<FlatList<Slide>>(null);
+
+  const carouselHeight = height * 0.55;
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -69,45 +73,39 @@ export default function GetStartedScreen({ navigation }: Props) {
     return () => clearInterval(timer);
   }, []);
 
-  function handleMomentumScrollEnd(event: NativeSyntheticEvent<NativeScrollEvent>) {
+  const handleMomentumScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const index = Math.round(event.nativeEvent.contentOffset.x / width);
     setActiveIndex(index);
-  }
+  };
 
-  function renderSlide({ item }: ListRenderItemInfo<Slide>) {
-    return <Image source={item.image} style={{ width, height }} resizeMode="cover" />;
-  }
-
-  const activeSlide = SLIDES[activeIndex];
+  const renderSlide = ({ item }: ListRenderItemInfo<Slide>) => {
+    return (
+      <View style={{ width, height: carouselHeight }}>
+        <Image source={item.image} style={styles.image} resizeMode="cover" />
+      </View>
+    );
+  };
 
   return (
-    <View style={styles.root}>
-      <StatusBar style="light" />
+    <View style={styles.container}>
+      <StatusBar style="dark" />
 
-      <FlatList
-        ref={listRef}
-        data={SLIDES}
-        keyExtractor={(item) => item.key}
-        renderItem={renderSlide}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={handleMomentumScrollEnd}
-        getItemLayout={(_, index) => ({ length: width, offset: width * index, index })}
-      />
+      {/* Upper 55% Illustration Carousel */}
+      <View style={{ width, height: carouselHeight }}>
+        <FlatList
+          ref={listRef}
+          data={SLIDES}
+          keyExtractor={(item) => item.key}
+          renderItem={renderSlide}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={handleMomentumScrollEnd}
+          getItemLayout={(_, index) => ({ length: width, offset: width * index, index })}
+        />
 
-      <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.85)']}
-        locations={[0, 0.5, 1]}
-        style={styles.gradient}
-        pointerEvents="none"
-      />
-
-      <View style={[styles.overlay, { paddingBottom: insets.bottom + spacing.lg }]}>
-        <Text style={styles.title}>{activeSlide.title}</Text>
-        <Text style={styles.subtitle}>{activeSlide.description}</Text>
-
-        <View style={styles.dots}>
+        {/* Carousel Indicators */}
+        <View style={styles.dotsRow}>
           {SLIDES.map((slide, index) => (
             <View
               key={slide.key}
@@ -115,64 +113,94 @@ export default function GetStartedScreen({ navigation }: Props) {
             />
           ))}
         </View>
+      </View>
 
-        <AppButton title="Get Started" onPress={() => navigation.navigate('SignUp')} />
-        <View style={styles.spacer} />
-        <AppButton title="Log In" variant="outline" onPress={() => navigation.navigate('Login')} />
+      {/* Content & Action Sheet */}
+      <View style={[styles.contentContainer, { paddingBottom: Math.max(insets.bottom, space.lg) }]}>
+        <View style={styles.textContainer}>
+          <Text style={styles.headline}>Find your ideal hostel and roommate in Ghana</Text>
+          <Text style={styles.subhead}>
+            Browse verified student hostels, calculate compatibility scores, and connect with roommates seamlessly.
+          </Text>
+        </View>
+
+        <View style={styles.actionContainer}>
+          <AppButton
+            title="Create account"
+            variant="primary"
+            size="lg"
+            onPress={() => navigation.navigate('SignUp')}
+          />
+          <AppButton
+            title="I already have an account"
+            variant="ghost"
+            size="lg"
+            onPress={() => navigation.navigate('Login')}
+          />
+        </View>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
+  container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: colors.background,
   },
-  gradient: {
+  image: {
+    width: '100%',
+    height: '100%',
+  },
+  dotsRow: {
     position: 'absolute',
+    bottom: space.md,
     left: 0,
     right: 0,
-    bottom: 0,
-    height: '55%',
-  },
-  overlay: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xl,
-  },
-  title: {
-    fontSize: typography.h1,
-    fontWeight: typography.weightBold,
-    color: '#FFFFFF',
-    marginBottom: spacing.sm,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: typography.body,
-    color: 'rgba(255,255,255,0.85)',
-    textAlign: 'center',
-  },
-  dots: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: spacing.xs,
-    marginTop: spacing.lg,
-    marginBottom: spacing.lg,
+    gap: space.xs,
   },
   dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.4)',
+    backgroundColor: 'rgba(255,255,255,0.5)',
   },
   dotActive: {
-    backgroundColor: '#FFFFFF',
+    width: 20,
+    backgroundColor: colors.primary,
   },
-  spacer: {
-    height: spacing.md,
+  contentContainer: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    marginTop: -radius.xl,
+    paddingHorizontal: space.xl,
+    paddingTop: space.xl,
+    justifyContent: 'space-between',
+  },
+  textContainer: {
+    alignItems: 'center',
+  },
+  headline: {
+    fontFamily: type.display.fontFamily,
+    fontSize: 26,
+    lineHeight: 32,
+    color: colors.ink,
+    textAlign: 'center',
+    marginBottom: space.sm,
+  },
+  subhead: {
+    fontFamily: type.body.fontFamily,
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.inkMuted,
+    textAlign: 'center',
+  },
+  actionContainer: {
+    gap: space.sm,
+    marginTop: space.lg,
   },
 });

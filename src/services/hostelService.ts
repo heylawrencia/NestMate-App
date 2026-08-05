@@ -2,6 +2,7 @@ import { MOCK_HOSTELS } from '../data/hostels';
 import {
   Hostel,
   HostelCategory,
+  HostelFilterOptions,
   HostelSearchFilters,
   HoldView,
   RoomSummary,
@@ -137,40 +138,41 @@ function detailToHostel(h: BackendHostelDetail): Hostel {
   };
 }
 
-export const FALLBACK_HOSTELS: Hostel[] = MOCK_HOSTELS;
+export async function fetchFilterOptions(): Promise<HostelFilterOptions> {
+  try {
+    return await api<HostelFilterOptions>('/api/hostels/filters');
+  } catch (e) {
+    console.warn('Failed to fetch filter options from API:', e);
+    return {
+      areas: ['KNUST Campus', 'Ayeduase', 'Kotei', 'Gaza'],
+      minPrice: 1000,
+      maxPrice: 15000,
+      capacities: [1, 2, 3, 4],
+      kinds: ['HOSTEL', 'APARTMENT'],
+    };
+  }
+}
 
 export async function fetchHostels(filters: HostelSearchFilters = {}): Promise<Hostel[]> {
   const params = new URLSearchParams();
   if (filters.query?.trim()) params.set('search', filters.query.trim());
   if (filters.category) params.set('kind', filters.category === 'Apartments' ? 'APARTMENT' : 'HOSTEL');
-  const qs = params.toString();
-  try {
-    const list = await api<BackendHostelSummary[]>(`/api/hostels${qs ? `?${qs}` : ''}`);
-    if (list && list.length > 0) {
-      return list.map(summaryToHostel);
-    }
-  } catch (e) {
-    console.warn('fetchHostels API call failed, using default list:', e);
-  }
+  if (filters.kind && filters.kind !== 'ANY') params.set('kind', filters.kind);
+  if (filters.areas && filters.areas.length > 0) params.set('area', filters.areas.join(','));
+  if (filters.minPrice != null) params.set('minPrice', String(filters.minPrice));
+  if (filters.maxPrice != null) params.set('maxPrice', String(filters.maxPrice));
+  if (filters.capacities && filters.capacities.length > 0) params.set('capacity', filters.capacities.join(','));
+  if (filters.availableOnly) params.set('availableOnly', 'true');
+  if (filters.sort) params.set('sort', filters.sort);
 
-  return FALLBACK_HOSTELS.filter((h) => {
-    if (filters.category && h.category !== filters.category) return false;
-    if (filters.query?.trim()) {
-      const q = filters.query.trim().toLowerCase();
-      return h.name.toLowerCase().includes(q) || h.location.toLowerCase().includes(q);
-    }
-    return true;
-  });
+  const qs = params.toString();
+  const list = await api<BackendHostelSummary[]>(`/api/hostels${qs ? `?${qs}` : ''}`);
+  return (list ?? []).map(summaryToHostel);
 }
 
 export async function fetchHostelById(hostelId: string): Promise<Hostel | null> {
-  try {
-    const detail = await api<BackendHostelDetail>(`/api/hostels/${hostelId}`);
-    return detailToHostel(detail);
-  } catch (e) {
-    console.warn('fetchHostelById API call failed, using default item:', e);
-    return FALLBACK_HOSTELS.find((h) => h.id === hostelId) ?? FALLBACK_HOSTELS[0];
-  }
+  const detail = await api<BackendHostelDetail>(`/api/hostels/${hostelId}`);
+  return detailToHostel(detail);
 }
 
 /** Rooms of a given type in a hostel, with compatibility against current occupants. */
@@ -214,15 +216,36 @@ export async function verifyAccessCode(
 ): Promise<VerifyAccessCodeResult> {
   try {
     const hold = await api<BackendHoldView>('/api/holds/me');
-    await api(`/api/holds/${hold.holdId}/confirm-code`, {
-      method: 'POST',
-      body: { code: code.trim().toUpperCase() },
-    });
-    return { success: true };
+    if (!hold || !hold.holdId) {
+      return {
+        success: false,
+        errorMessage: 'No active bed hold found. Please select a bed and start a 48-hour hold first.',
+      };
+    }
+
+    const cleanCode = code.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    const formattedCode = cleanCode.length === 6 ? `${cleanCode.slice(0, 3)}-${cleanCode.slice(3)}` : cleanCode;
+
+    try {
+      await api(`/api/holds/${hold.holdId}/confirm-code`, {
+        method: 'POST',
+        body: { code: formattedCode },
+      });
+      return { success: true };
+    } catch (firstErr) {
+      // Try raw unhyphenated code as fallback if formatted code failed
+      await api(`/api/holds/${hold.holdId}/confirm-code`, {
+        method: 'POST',
+        body: { code: cleanCode },
+      });
+      return { success: true };
+    }
   } catch (e) {
     const message =
       e instanceof ApiError
-        ? e.message
+        ? e.message === 'No active hold' || e.status === 404
+          ? 'No active bed hold found. Please select a room and hold a bed first.'
+          : e.message
         : 'That code doesn’t look right. Check your receipt and try again.';
     return { success: false, errorMessage: message };
   }

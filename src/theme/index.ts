@@ -1,9 +1,23 @@
 import { colors } from './colors';
-import { spacing } from './spacing';
-import { typography } from './typography';
+import { space, radius, spacing } from './spacing';
+import { type, typography } from './typography';
 import { moderateScale, scaleHeight, scaleWidth } from './responsive';
-import { shadows } from './shadows';
+import { elevation, shadows } from './shadows';
+import { motion } from './motion';
 
-export const theme = { colors, spacing, typography, shadows };
+export const theme = { colors, space, radius, spacing, type, typography, elevation, shadows, motion };
 
-export { colors, spacing, typography, moderateScale, scaleHeight, scaleWidth, shadows };
+export {
+  colors,
+  space,
+  radius,
+  spacing,
+  type,
+  typography,
+  moderateScale,
+  scaleHeight,
+  scaleWidth,
+  elevation,
+  shadows,
+  motion,
+};

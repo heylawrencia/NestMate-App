@@ -1,10 +1,10 @@
 import React, { useRef, useState } from 'react';
 import {
   NativeSyntheticEvent,
+  Pressable,
   StyleSheet,
   TextInput,
   TextInputKeyPressEventData,
-  View,
 } from 'react-native';
 
 import { colors, moderateScale, spacing, typography } from '../theme';
@@ -38,8 +38,14 @@ export default function CodeInput({ length = 6, onChange, characters = false }: 
     }
   }
 
+  const focusNextEmpty = () => {
+    const emptyIndex = values.findIndex((val) => !val);
+    const target = emptyIndex !== -1 ? emptyIndex : length - 1;
+    inputRefs.current[target]?.focus();
+  };
+
   return (
-    <View style={styles.row}>
+    <Pressable onPress={focusNextEmpty} style={styles.row}>
       {values.map((value, index) => (
         <TextInput
           key={index}
@@ -60,7 +66,7 @@ export default function CodeInput({ length = 6, onChange, characters = false }: 
           textAlign="center"
         />
       ))}
-    </View>
+    </Pressable>
   );
 }
 

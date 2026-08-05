@@ -21,7 +21,7 @@ import IconCircle from '../../components/IconCircle';
 import ScreenHeader from '../../components/ScreenHeader';
 import SelectField from '../../components/SelectField';
 import OnboardingProgressBar from '../../components/OnboardingProgressBar';
-import { colors, spacing, typography } from '../../theme';
+import { colors, radius, space, type } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
 import { isWithinWordLimit } from '../../utils/limitWords';
 import { resolveMediaUrl } from '../../services/apiClient';
@@ -110,7 +110,7 @@ export default function AboutYouScreen({ navigation, route }: Props) {
     if (!validate() || !dateOfBirth) {
       return;
     }
-    navigation.navigate('OnboardingPhotos', {
+    navigation.navigate('OnboardingLifestyle', {
       data: {
         ...data,
         avatarUri,
@@ -139,7 +139,7 @@ export default function AboutYouScreen({ navigation, route }: Props) {
               {avatarUri ? (
                 <Image source={{ uri: resolveMediaUrl(avatarUri) }} style={styles.avatarImage} />
               ) : (
-                <Ionicons name="camera" size={28} color={colors.textMuted} />
+                <Ionicons name="camera" size={28} color={colors.inkMuted} />
               )}
             </IconCircle>
           </TouchableOpacity>
@@ -237,12 +237,12 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.lg,
   },
   avatarTouchable: {
     alignSelf: 'center',
-    marginVertical: spacing.lg,
+    marginVertical: space.lg,
   },
   avatarImage: {
     width: '100%',
@@ -253,15 +253,16 @@ const styles = StyleSheet.create({
   },
   budgetRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    gap: space.sm,
   },
   budgetField: {
     flex: 1,
   },
   budgetError: {
-    color: colors.error,
-    fontSize: typography.caption,
-    marginTop: -spacing.sm,
-    marginBottom: spacing.md,
+    fontFamily: type.caption.fontFamily,
+    color: colors.danger,
+    fontSize: 13,
+    marginTop: -space.sm,
+    marginBottom: space.md,
   },
 });

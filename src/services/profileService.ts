@@ -197,9 +197,9 @@ export async function updateProfile(update: any): Promise<UserProfile> {
       hasPets: mapYesNo(update.hasPets ?? lifestyle.hasPets),
       petsOk: mapYesNo(update.petFriendly ?? update.petsOk ?? lifestyle.petFriendly),
       seekingType: mapSeekingType(update.seekingType ?? lifestyle.seekingType),
-      city: update.city || undefined,
-      budgetMin: update.budgetMin != null && update.budgetMin !== '' ? Number(update.budgetMin) : undefined,
-      budgetMax: update.budgetMax != null && update.budgetMax !== '' ? Number(update.budgetMax) : undefined,
+      city: update.city || 'Kumasi',
+      budgetMin: update.budgetMin != null && update.budgetMin !== '' ? Number(update.budgetMin) : 2000,
+      budgetMax: update.budgetMax != null && update.budgetMax !== '' ? Number(update.budgetMax) : 9000,
     },
   });
   return toUserProfile(p);
@@ -356,4 +356,89 @@ export async function createLifestyleProfile(
     return { success: false, errorMessage: message };
   }
 }
+
+export interface ProfileCompleteness {
+  score: number;
+  missingItem: string | null;
+  reason: string | null;
+}
+
+export async function fetchProfileCompleteness(): Promise<ProfileCompleteness> {
+  try {
+    const profile = await api<any>('/api/profiles/me');
+    const score = profile?.completeness != null ? profile.completeness : 100;
+    return {
+      score: score,
+      missingItem: score < 100 ? 'Complete your bio & avatar' : null,
+      reason: 'Profiles with photos & interests get 3x more matches',
+    };
+  } catch (e) {
+    return { score: 100, missingItem: null, reason: null };
+  }
+}
+
+export interface InterestItem {
+  id: number;
+  code: string;
+  label: string;
+  category: string;
+  emoji: string;
+  sortOrder: number;
+}
+
+export const DEFAULT_INTERESTS: InterestItem[] = [
+  { id: 1, code: 'football', label: 'Football', category: 'Sports & Fitness', emoji: '⚽', sortOrder: 1 },
+  { id: 2, code: 'basketball', label: 'Basketball', category: 'Sports & Fitness', emoji: '🏀', sortOrder: 2 },
+  { id: 3, code: 'gym', label: 'Gym / Fitness', category: 'Sports & Fitness', emoji: '🏋️', sortOrder: 3 },
+  { id: 4, code: 'swimming', label: 'Swimming', category: 'Sports & Fitness', emoji: '🏊', sortOrder: 4 },
+  { id: 5, code: 'running', label: 'Running', category: 'Sports & Fitness', emoji: '🏃', sortOrder: 5 },
+  { id: 6, code: 'volleyball', label: 'Volleyball', category: 'Sports & Fitness', emoji: '🏐', sortOrder: 6 },
+
+  { id: 7, code: 'afrobeat', label: 'Afrobeat Music', category: 'Music & Arts', emoji: '🎵', sortOrder: 7 },
+  { id: 8, code: 'hiphop', label: 'Hip Hop', category: 'Music & Arts', emoji: '🎶', sortOrder: 8 },
+  { id: 9, code: 'drawing', label: 'Drawing & Painting', category: 'Music & Arts', emoji: '🎨', sortOrder: 9 },
+  { id: 10, code: 'photography', label: 'Photography', category: 'Music & Arts', emoji: '📷', sortOrder: 10 },
+  { id: 11, code: 'guitar', label: 'Guitar / Instruments', category: 'Music & Arts', emoji: '🎸', sortOrder: 11 },
+  { id: 12, code: 'dancing', label: 'Dancing', category: 'Music & Arts', emoji: '💃', sortOrder: 12 },
+
+  { id: 13, code: 'fifa', label: 'EA FC / FIFA', category: 'Gaming & Tech', emoji: '🎮', sortOrder: 13 },
+  { id: 14, code: 'mobile_gaming', label: 'Mobile Gaming', category: 'Gaming & Tech', emoji: '📱', sortOrder: 14 },
+  { id: 15, code: 'coding', label: 'Coding & Web', category: 'Gaming & Tech', emoji: '💻', sortOrder: 15 },
+  { id: 16, code: 'anime', label: 'Anime & Manga', category: 'Gaming & Tech', emoji: '🎌', sortOrder: 16 },
+  { id: 17, code: 'board_games', label: 'Board Games', category: 'Gaming & Tech', emoji: '🎲', sortOrder: 17 },
+
+  { id: 18, code: 'cooking', label: 'Cooking & Baking', category: 'Lifestyle', emoji: '🍳', sortOrder: 18 },
+  { id: 19, code: 'reading', label: 'Reading Books', category: 'Lifestyle', emoji: '📚', sortOrder: 19 },
+  { id: 20, code: 'fashion', label: 'Fashion & Thrift', category: 'Lifestyle', emoji: '👗', sortOrder: 20 },
+  { id: 21, code: 'traveling', label: 'Exploring & Travel', category: 'Lifestyle', emoji: '✈️', sortOrder: 21 },
+  { id: 22, code: 'movies', label: 'Movies & Series', category: 'Lifestyle', emoji: '🍿', sortOrder: 22 },
+
+  { id: 23, code: 'science', label: 'STEM & Research', category: 'Academics', emoji: '🔬', sortOrder: 23 },
+  { id: 24, code: 'business', label: 'Business & Startups', category: 'Academics', emoji: '💼', sortOrder: 24 },
+  { id: 25, code: 'languages', label: 'Foreign Languages', category: 'Academics', emoji: '🗣️', sortOrder: 25 },
+  { id: 26, code: 'public_speaking', label: 'Debate & Speaking', category: 'Academics', emoji: '🎙️', sortOrder: 26 },
+
+  { id: 27, code: 'jollof', label: 'Jollof & Local Foods', category: 'Food & Social', emoji: '🍚', sortOrder: 27 },
+  { id: 28, code: 'street_food', label: 'Street Food Spots', category: 'Food & Social', emoji: '🍢', sortOrder: 28 },
+  { id: 29, code: 'coffee', label: 'Coffee & Tea', category: 'Food & Social', emoji: '☕', sortOrder: 29 },
+  { id: 30, code: 'partying', label: 'Campus Events', category: 'Food & Social', emoji: '🎉', sortOrder: 30 },
+];
+
+export async function fetchInterests(): Promise<InterestItem[]> {
+  try {
+    const list = await api<InterestItem[]>('/api/interests');
+    return list && list.length > 0 ? list : DEFAULT_INTERESTS;
+  } catch (e) {
+    console.warn('Failed to fetch interests from API, returning default catalog:', e);
+    return DEFAULT_INTERESTS;
+  }
+}
+
+export async function updateMyInterests(interestIds: number[]): Promise<InterestItem[]> {
+  return api<InterestItem[]>('/api/profiles/me/interests', {
+    method: 'PUT',
+    body: { interestIds },
+  });
+}
+
 

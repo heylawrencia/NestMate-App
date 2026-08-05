@@ -5,7 +5,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import AppButton from '../../components/AppButton';
 import IconCircle from '../../components/IconCircle';
-import { colors, spacing, typography } from '../../theme';
+import { colors, radius, space, type } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
 import { useAuth } from '../../context/AuthContext';
 import { createLifestyleProfile } from '../../services/profileService';
@@ -65,7 +65,7 @@ export default function OnboardingCompleteScreen({ navigation, route }: Props) {
         {status === 'error' ? (
           <>
             <IconCircle size={96} backgroundColor="#F4E5E5" style={styles.iconCircle}>
-              <Ionicons name="alert-circle-outline" size={40} color={colors.error} />
+              <Ionicons name="alert-circle-outline" size={40} color={colors.danger} />
             </IconCircle>
             <Text style={styles.title}>Couldn&apos;t create your account</Text>
             <Text style={styles.subtitle}>{errorMessage ?? 'Something went wrong.'}</Text>
@@ -122,31 +122,33 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: space.xl,
   },
   iconCircle: {
-    marginBottom: spacing.lg,
+    marginBottom: space.lg,
   },
   title: {
-    fontSize: typography.h1,
-    fontWeight: typography.weightBold,
-    color: colors.text,
-    marginBottom: spacing.sm,
+    fontFamily: type.h1.fontFamily,
+    fontSize: type.h1.fontSize,
+    fontWeight: '700',
+    color: colors.ink,
+    marginBottom: space.sm,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: typography.body,
-    color: colors.textMuted,
+    fontFamily: type.body.fontFamily,
+    fontSize: type.body.fontSize,
+    color: colors.inkMuted,
     textAlign: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: space.xl,
   },
   progressTrack: {
     width: '100%',
     height: 6,
     borderRadius: 3,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.line,
     overflow: 'hidden',
-    marginBottom: spacing.xxl,
+    marginBottom: space.xxl,
   },
   progressFill: {
     height: '100%',
@@ -157,6 +159,6 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   buttonSpacer: {
-    height: spacing.sm,
+    height: space.sm,
   },
 });

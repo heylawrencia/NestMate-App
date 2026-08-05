@@ -1,108 +1,89 @@
+/**
+ * CodeVerifiedScreen — Confirmation & Next Action Screen (Spec §7.3 & Task 9)
+ *
+ * Confirmation headline, receipt summary, and TWO EQUALLY PROMINENT ACTIONS:
+ * [Find roommates] and [Skip for now] (item 19). Skipping is equally easy.
+ */
+
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CompositeScreenProps } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import AppButton from '../components/AppButton';
-import AsyncBoundary from '../components/AsyncBoundary';
-import Badge from '../components/Badge';
 import ElevatedCard from '../components/ElevatedCard';
-import GradientHeader from '../components/GradientHeader';
-import HeaderIconRow from '../components/HeaderIconRow';
 import IconCircle from '../components/IconCircle';
-import StepProgressBar from '../components/StepProgressBar';
-import { colors, spacing, typography } from '../theme';
-import { ExploreStackParamList, RootStackParamList } from '../navigation/types';
-import { useAsyncData } from '../hooks/useAsyncData';
-import { CURRENT_ACADEMIC_YEAR, fetchHostelById, formatAccessCode } from '../services/hostelService';
-import { useDrawer } from '../context/DrawerContext';
+import { HostelsStackParamList, RootStackParamList } from '../navigation/types';
+import { colors, radius, space, type } from '../theme';
 
 type Props = CompositeScreenProps<
-  NativeStackScreenProps<ExploreStackParamList, 'CodeVerified'>,
+  NativeStackScreenProps<HostelsStackParamList, 'CodeVerified'>,
   NativeStackScreenProps<RootStackParamList>
 >;
 
-export default function CodeVerifiedScreen({ navigation, route }: Props) {
-  const { hostelId, code, roomTypeId } = route.params;
-  const { data: hostel, loading, error, reload } = useAsyncData(
-    () => fetchHostelById(hostelId),
-    [hostelId],
-  );
-  const { openDrawer } = useDrawer();
+export default function CodeVerifiedScreen({ route, navigation }: Props) {
+  const { code } = route.params;
+
+  const handleFindRoommates = () => {
+    (navigation as any).navigate('Matches');
+  };
+
+  const handleSkipForNow = () => {
+    (navigation as any).reset({ index: 0, routes: [{ name: 'Home' }] });
+  };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
-      <GradientHeader>
-        <HeaderIconRow
-          onBack={() => navigation.goBack()}
-          onMenuPress={openDrawer}
-          onNotificationsPress={() => navigation.navigate('Notifications')}
-        />
-        <Text style={styles.headerTitle}>Code Verified</Text>
-      </GradientHeader>
-
+    <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <StepProgressBar totalSteps={2} currentStep={1} />
+        <ElevatedCard style={styles.card}>
+          <IconCircle size={72} backgroundColor={colors.primaryLight} style={styles.iconCenter}>
+            <Ionicons name="checkmark-circle" size={44} color={colors.primary} />
+          </IconCircle>
 
-        <AsyncBoundary loading={loading} error={error} onRetry={reload}>
-          {hostel ? (
-            <ElevatedCard style={styles.card}>
-              <View style={styles.centeredGroup}>
-                <IconCircle size={80} backgroundColor="#E3F5EE" style={styles.iconCircle}>
-                  <Ionicons name="lock-open-outline" size={36} color={colors.success} />
-                </IconCircle>
+          <Text style={styles.headline}>Bed Allocation Confirmed! 🎉</Text>
+          <Text style={styles.subheadline}>
+            Your access code has been verified. Your room allocation for the 2026/27 academic year is officially confirmed.
+          </Text>
 
-                <Text style={styles.title}>Code verified!</Text>
-                <Text style={styles.subtitle}>
-                  Your payment is confirmed. Your bed is officially yours.
-                </Text>
-              </View>
+          {/* Receipt Summary Box */}
+          <View style={styles.receiptBox}>
+            <View style={styles.receiptRow}>
+              <Text style={styles.receiptLabel}>Access Code</Text>
+              <Text style={styles.receiptValue}>{code}</Text>
+            </View>
+            <View style={styles.receiptDivider} />
+            <View style={styles.receiptRow}>
+              <Text style={styles.receiptLabel}>Status</Text>
+              <Text style={styles.statusConfirmed}>CONFIRMED</Text>
+            </View>
+          </View>
 
-              <View style={styles.detailsCard}>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Hostel</Text>
-                  <Text style={styles.detailValue}>
-                    {hostel.name} · {hostel.location}
-                  </Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Code</Text>
-                  <Text style={styles.detailValue}>{formatAccessCode(code)}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Session</Text>
-                  <Text style={styles.detailValue}>{CURRENT_ACADEMIC_YEAR}</Text>
-                </View>
-                <View style={[styles.detailRow, styles.detailRowLast]}>
-                  <Text style={styles.detailLabel}>Status</Text>
-                  <Badge label="Paid" tone="success" />
-                </View>
-              </View>
+          <Text style={styles.promptTitle}>Would you like to match with roommates in your room?</Text>
 
-              <View style={styles.infoRow}>
-                <Ionicons name="information-circle-outline" size={16} color={colors.textMuted} />
-                <Text style={styles.infoText}>
-                  This code is now linked to your account — you won&apos;t need to enter it again
-                </Text>
-              </View>
+          {/* TWO EQUALLY PROMINENT ACTIONS (item 19) */}
+          <View style={styles.actionsGroup}>
+            <AppButton
+              title="Find Roommates →"
+              variant="primary"
+              size="lg"
+              onPress={handleFindRoommates}
+            />
 
-              <AppButton
-                title="Choose room type to match"
-                onPress={() => navigation.navigate('ChooseRoomType', { hostelId })}
-              />
-              <View style={styles.spacer} />
-              <AppButton
-                title="See all roommate matches"
-                variant="outline"
-                onPress={() => navigation.navigate('Home', { screen: 'Matches' } as never)}
-              />
-            </ElevatedCard>
-          ) : (
-            <Text style={styles.notFoundText}>Hostel not found.</Text>
-          )}
-        </AsyncBoundary>
+            <AppButton
+              title="Skip for Now"
+              variant="secondary"
+              size="lg"
+              onPress={handleSkipForNow}
+            />
+          </View>
+        </ElevatedCard>
       </ScrollView>
     </SafeAreaView>
   );
@@ -111,85 +92,83 @@ export default function CodeVerifiedScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.surfaceTint,
-  },
-  headerTitle: {
-    fontSize: typography.h1,
-    fontWeight: typography.weightBold,
-    color: colors.white,
+    backgroundColor: colors.background,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
+    padding: space.lg,
+    justifyContent: 'center',
   },
   card: {
-    width: '100%',
-  },
-  centeredGroup: {
+    padding: space.xl,
+    borderRadius: radius.xl,
     alignItems: 'center',
   },
-  iconCircle: {
-    marginBottom: spacing.lg,
+  iconCenter: {
+    marginBottom: space.lg,
   },
-  title: {
-    fontSize: typography.h2,
-    fontWeight: typography.weightBold,
-    color: colors.text,
-    marginBottom: spacing.sm,
-  },
-  subtitle: {
-    fontSize: typography.body,
-    color: colors.textMuted,
+  headline: {
+    fontFamily: type.display.fontFamily,
+    fontSize: type.display.fontSize,
+    color: colors.ink,
+    fontWeight: '800',
     textAlign: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: space.xs,
   },
-  detailsCard: {
+  subheadline: {
+    fontFamily: type.caption.fontFamily,
+    fontSize: 14,
+    color: colors.inkMuted,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: space.xl,
+  },
+  receiptBox: {
     width: '100%',
+    backgroundColor: colors.background,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 16,
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.lg,
+    borderColor: colors.line,
+    padding: space.lg,
+    marginBottom: space.xl,
   },
-  detailRow: {
+  receiptRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
-  detailRowLast: {
-    borderBottomWidth: 0,
+  receiptLabel: {
+    fontFamily: type.caption.fontFamily,
+    fontSize: 13,
+    color: colors.inkMuted,
   },
-  detailLabel: {
-    fontSize: typography.body,
-    color: colors.textMuted,
+  receiptValue: {
+    fontFamily: type.price.fontFamily,
+    fontSize: 16,
+    color: colors.ink,
+    fontWeight: '700',
   },
-  detailValue: {
-    fontSize: typography.body,
-    fontWeight: typography.weightBold,
-    color: colors.text,
+  receiptDivider: {
+    height: 1,
+    backgroundColor: colors.line,
+    marginVertical: space.sm,
   },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.xs,
-    marginBottom: spacing.xl,
+  statusConfirmed: {
+    fontFamily: type.micro.fontFamily,
+    fontSize: 12,
+    color: colors.primary,
+    fontWeight: '700',
   },
-  infoText: {
-    flex: 1,
-    fontSize: typography.caption,
-    color: colors.textMuted,
-  },
-  notFoundText: {
-    fontSize: typography.body,
-    color: colors.textMuted,
+  promptTitle: {
+    fontFamily: type.h3.fontFamily,
+    fontSize: type.h3.fontSize,
+    color: colors.ink,
+    fontWeight: '600',
     textAlign: 'center',
-    marginTop: spacing.xl,
+    marginBottom: space.lg,
   },
-  spacer: {
-    height: spacing.sm,
+  actionsGroup: {
+    width: '100%',
+    gap: space.md,
   },
 });

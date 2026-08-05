@@ -1,10 +1,16 @@
+/**
+ * AccessCodeScreen — Access Code Redemption Screen (Spec §7.3 & Task 9)
+ *
+ * Input for 6-digit access code issued by manager after payment.
+ * Automatically formats code with a hyphen (e.g. 123-456).
+ */
+
 import React, { useState } from 'react';
 import {
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,92 +19,100 @@ import { CompositeScreenProps } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import AppButton from '../components/AppButton';
-import AsyncBoundary from '../components/AsyncBoundary';
-import CodeInput from '../components/CodeInput';
+import AppTextInput from '../components/AppTextInput';
 import ElevatedCard from '../components/ElevatedCard';
-import GradientHeader from '../components/GradientHeader';
-import HeaderIconRow from '../components/HeaderIconRow';
-import StepProgressBar from '../components/StepProgressBar';
-import { colors, spacing, typography } from '../theme';
-import { ExploreStackParamList, RootStackParamList } from '../navigation/types';
-import { useAsyncData } from '../hooks/useAsyncData';
-import { fetchHostelById, verifyAccessCode } from '../services/hostelService';
-import { useDrawer } from '../context/DrawerContext';
+import IconCircle from '../components/IconCircle';
+import { HostelsStackParamList, RootStackParamList } from '../navigation/types';
+import { formatAccessCode, verifyAccessCode } from '../services/hostelService';
+import { colors, radius, space, type } from '../theme';
 
 type Props = CompositeScreenProps<
-  NativeStackScreenProps<ExploreStackParamList, 'AccessCode'>,
+  NativeStackScreenProps<HostelsStackParamList, 'AccessCode'>,
   NativeStackScreenProps<RootStackParamList>
 >;
 
-const CODE_LENGTH = 6;
-
-export default function AccessCodeScreen({ navigation, route }: Props) {
-  const { hostelId, roomTypeId } = route.params;
-  const { data: hostel, loading, error, reload } = useAsyncData(
-    () => fetchHostelById(hostelId),
-    [hostelId],
-  );
-  const { openDrawer } = useDrawer();
+export default function AccessCodeScreen({ route, navigation }: Props) {
+  const { hostelId } = route.params;
 
   const [code, setCode] = useState('');
-  const [formError, setFormError] = useState<string | undefined>();
-  const [verifying, setVerifying] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
-  async function handleVerify() {
-    if (code.length < CODE_LENGTH) {
-      setFormError('Enter the full 6-character code.');
+  const handleChangeText = (text: string) => {
+    // Allow uppercase alphanumeric characters and optional hyphen directly up to 7 chars (e.g. 123-456 or 123456)
+    const cleaned = text.toUpperCase().slice(0, 7);
+    setCode(cleaned);
+    if (error) setError('');
+  };
+
+  const handleVerify = async () => {
+    const rawCode = code.replace(/[^A-Za-z0-9]/g, '');
+    if (rawCode.length < 6) {
+      setError('Please enter the full 6-character access code.');
       return;
     }
-    setFormError(undefined);
 
-    setVerifying(true);
-    const result = await verifyAccessCode(hostelId, code);
-    setVerifying(false);
+    setError('');
+    setSubmitting(true);
+    const result = await verifyAccessCode(hostelId, rawCode);
+    setSubmitting(false);
 
     if (result.success) {
-      navigation.navigate('CodeVerified', { hostelId, code, roomTypeId });
+      navigation.navigate('CodeVerified', { hostelId, code: rawCode });
     } else {
-      setFormError(result.errorMessage ?? 'That code doesn’t look right. Check your receipt and try again.');
+      setError(result.errorMessage ?? 'Invalid access code. Please check with your hostel manager.');
     }
-  }
+  };
+
+  const rawCodeLength = code.replace(/[^A-Za-z0-9]/g, '').length;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
-      <GradientHeader>
-        <HeaderIconRow
-          onBack={() => navigation.goBack()}
-          onMenuPress={openDrawer}
-          onNotificationsPress={() => navigation.navigate('Notifications')}
-        />
-        <Text style={styles.headerTitle}>{hostel?.shortName ?? 'Hostel'} access</Text>
-      </GradientHeader>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.headerRow}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <Ionicons name="chevron-back" size={24} color={colors.ink} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Enter Access Code</Text>
+      </View>
 
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <AsyncBoundary loading={loading} error={error} onRetry={reload}>
-          <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-            <StepProgressBar totalSteps={2} currentStep={0} />
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ElevatedCard style={styles.card}>
+          <IconCircle size={64} backgroundColor={colors.primaryLight} style={styles.iconCenter}>
+            <Ionicons name="key-outline" size={32} color={colors.primary} />
+          </IconCircle>
 
-            <ElevatedCard style={styles.card}>
-              <Text style={styles.prompt}>Enter the code from your payment receipt</Text>
+          <Text style={styles.cardTitle}>Hostel Manager Receipt Code</Text>
+          <Text style={styles.cardSubtitle}>
+            Enter the 6-character access code provided by your hostel manager after paying your booking fee.
+          </Text>
 
-              <View style={styles.codeWrapper}>
-                <CodeInput length={CODE_LENGTH} onChange={setCode} characters />
-              </View>
+          <View style={styles.inputContainer}>
+            <AppTextInput
+              label="Access Code (e.g. 123-456)"
+              value={code}
+              onChangeText={handleChangeText}
+              placeholder="123-456"
+              autoCapitalize="characters"
+              autoCorrect={false}
+              keyboardType="default"
+              maxLength={7}
+            />
+          </View>
 
-              {formError ? <Text style={styles.formError}>{formError}</Text> : null}
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-              <View style={styles.infoRow}>
-                <Ionicons name="information-circle-outline" size={16} color={colors.textMuted} />
-                <Text style={styles.infoText}>Codes are one-time and tied to your payment</Text>
-              </View>
-
-              <AppButton title="Verify code" onPress={handleVerify} loading={verifying} />
-            </ElevatedCard>
-
-            <Text style={styles.footerText}>No code? Visit the hostel office to pay</Text>
-          </ScrollView>
-        </AsyncBoundary>
-      </KeyboardAvoidingView>
+          <View style={styles.actionRow}>
+            <AppButton
+              title="Verify Code & Confirm Bed →"
+              variant="primary"
+              size="lg"
+              disabled={rawCodeLength < 6}
+              loading={submitting}
+              onPress={handleVerify}
+            />
+          </View>
+        </ElevatedCard>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -106,52 +120,66 @@ export default function AccessCodeScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.surfaceTint,
+    backgroundColor: colors.background,
   },
-  headerTitle: {
-    fontSize: typography.h1,
-    fontWeight: typography.weightBold,
-    color: colors.white,
-  },
-  flex: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-  },
-  card: {
-    marginBottom: spacing.md,
-  },
-  prompt: {
-    fontSize: typography.body,
-    fontWeight: typography.weightMedium,
-    color: colors.text,
-    marginBottom: spacing.lg,
-  },
-  codeWrapper: {
-    marginBottom: spacing.md,
-  },
-  formError: {
-    color: colors.error,
-    fontSize: typography.caption,
-    marginBottom: spacing.md,
-  },
-  infoRow: {
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    marginBottom: spacing.lg,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
   },
-  infoText: {
-    flex: 1,
-    fontSize: typography.caption,
-    color: colors.textMuted,
+  backBtn: {
+    padding: space.xs,
+    marginRight: space.sm,
   },
-  footerText: {
-    fontSize: typography.caption,
-    color: colors.textMuted,
+  headerTitle: {
+    fontFamily: type.h2.fontFamily,
+    fontSize: type.h2.fontSize,
+    color: colors.ink,
+    fontWeight: '700',
+  },
+  scrollContent: {
+    padding: space.lg,
+    justifyContent: 'center',
+  },
+  card: {
+    padding: space.xl,
+    borderRadius: radius.xl,
+    alignItems: 'center',
+  },
+  iconCenter: {
+    marginBottom: space.lg,
+  },
+  cardTitle: {
+    fontFamily: type.h1.fontFamily,
+    fontSize: type.h1.fontSize,
+    color: colors.ink,
+    fontWeight: '700',
     textAlign: 'center',
+    marginBottom: space.xs,
+  },
+  cardSubtitle: {
+    fontFamily: type.caption.fontFamily,
+    fontSize: 14,
+    color: colors.inkMuted,
+    textAlign: 'center',
+    marginBottom: space.xl,
+    lineHeight: 20,
+  },
+  inputContainer: {
+    width: '100%',
+    marginBottom: space.md,
+  },
+  errorText: {
+    fontFamily: type.caption.fontFamily,
+    fontSize: 13,
+    color: colors.danger,
+    textAlign: 'center',
+    marginBottom: space.md,
+  },
+  actionRow: {
+    width: '100%',
   },
 });

@@ -1,19 +1,25 @@
+/**
+ * SplashScreen — Initial boot and session restoration splash screen (Spec §5.1)
+ *
+ * Displays logo animation while AuthContext restores persisted credentials.
+ */
+
 import React, { useEffect, useRef } from 'react';
 import { Animated, Image, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import { colors, moderateScale, spacing, typography } from '../theme';
+import { colors, radius, space, type } from '../theme';
 import { RootStackParamList } from '../navigation/types';
 import { useAuth } from '../context/AuthContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Splash'>;
 
-const SPLASH_DURATION_MS = 1600;
+const SPLASH_DURATION_MS = 1400;
 
 export default function SplashScreen({ navigation }: Props) {
   const progress = useRef(new Animated.Value(0)).current;
-  const { token, isLoading } = useAuth();
+  const { token, isLoading, email } = useAuth();
 
   useEffect(() => {
     Animated.timing(progress, {
@@ -24,20 +30,18 @@ export default function SplashScreen({ navigation }: Props) {
   }, [progress]);
 
   useEffect(() => {
-    if (isLoading) {
-      return;
-    }
+    if (isLoading) return;
 
     const timer = setTimeout(() => {
       if (token) {
-        navigation.replace('Home', { email: '' });
+        navigation.replace('Home', { email: email || '' });
       } else {
         navigation.replace('GetStarted');
       }
     }, SPLASH_DURATION_MS);
 
     return () => clearTimeout(timer);
-  }, [navigation, isLoading, token]);
+  }, [navigation, isLoading, token, email]);
 
   const progressWidth = progress.interpolate({
     inputRange: [0, 1],
@@ -47,15 +51,18 @@ export default function SplashScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.content}>
-        <Image
-          source={require('../../assets/logo.png')}
-          style={[styles.logo, { width: moderateScale(120), height: moderateScale(120) }]}
-          resizeMode="contain"
-        />
-        <Text style={styles.appName}>NestMate</Text>
-        <Text style={styles.tagline}>Find your perfect roommates.</Text>
+        <View style={styles.logoBadge}>
+          <Image
+            source={require('../../assets/logo.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
+        </View>
 
-        <View style={[styles.progressTrack, { width: moderateScale(120) }]}>
+        <Text style={styles.appName}>NestMate</Text>
+        <Text style={styles.tagline}>Find your ideal hostel & roommate</Text>
+
+        <View style={styles.progressTrack}>
           <Animated.View style={[styles.progressFill, { width: progressWidth }]} />
         </View>
       </View>
@@ -72,32 +79,44 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: space.xl,
   },
-  logo: {
-    marginBottom: spacing.lg,
+  logoBadge: {
+    width: 84,
+    height: 84,
+    borderRadius: radius.xl,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: space.lg,
+  },
+  logoImage: {
+    width: 56,
+    height: 56,
   },
   appName: {
-    fontSize: typography.h1,
-    fontWeight: typography.weightBold,
-    color: colors.text,
-    marginBottom: spacing.sm,
+    fontFamily: type.display.fontFamily,
+    fontSize: type.display.fontSize,
+    color: colors.ink,
+    marginBottom: space.xs,
   },
   tagline: {
-    fontSize: typography.body,
-    color: colors.textMuted,
+    fontFamily: type.body.fontFamily,
+    fontSize: type.body.fontSize,
+    color: colors.inkMuted,
     textAlign: 'center',
   },
   progressTrack: {
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.border,
-    marginTop: spacing.xl,
+    height: 4,
+    width: 120,
+    borderRadius: radius.pill,
+    backgroundColor: colors.line,
+    marginTop: space.xxl,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    borderRadius: 3,
-    backgroundColor: colors.text,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
   },
 });

@@ -20,7 +20,6 @@ export interface OnboardingLifestyle {
 
 export interface OnboardingData {
   email: string;
-  /** Carried through onboarding only to create the real account at the end - never persisted client-side beyond this. */
   password?: string;
   fullName?: string;
   dateOfBirth?: string;
@@ -36,41 +35,8 @@ export interface OnboardingData {
   budgetMax?: string;
 }
 
-export type RootStackParamList = {
-  Splash: undefined;
-  GetStarted: undefined;
-  Login: undefined;
-  SignUp: undefined;
-  ForgotPassword: undefined;
-  ResetPassword: { email: string };
-  VerifyEmail: { email: string; name?: string; data?: OnboardingData };
-  OnboardingAboutYou: { data: OnboardingData };
-  OnboardingPhotos: { data: OnboardingData };
-  OnboardingInterests: { data: OnboardingData };
-  OnboardingLifestyle: { data: OnboardingData };
-  OnboardingComplete: { data: OnboardingData };
-  Home: { email: string; name?: string };
-  ManagerDashboard: { email: string };
-  Invites: undefined;
-  MyHostel: undefined;
-  Verification: undefined;
-  Settings: undefined;
-  Account: undefined;
-  Privacy: undefined;
-  About: undefined;
-  HelpSupport: undefined;
-  EditProfile: undefined;
-  Preferences: undefined;
-  Notifications: undefined;
-  Placeholder: { title: string; description?: string };
-  MatchProfile: { matchId: string; otherUserName?: string; name?: string };
-  IndividualChat: { matchId: string; otherUserName?: string; name?: string };
-  GroupChat: { hostelId: string; roomTypeId: string };
-  UpgradePremium: undefined;
-};
-
-export type ExploreStackParamList = {
-  ExploreList: undefined;
+export type HostelsStackParamList = {
+  HostelList: undefined;
   HostelDetail: { hostelId: string };
   AccessCode: { hostelId: string; roomTypeId?: string };
   CodeVerified: { hostelId: string; code: string; roomTypeId?: string };
@@ -84,10 +50,64 @@ export type ExploreStackParamList = {
   Allocation: { hostelId: string; roomTypeId: string };
 };
 
+export type MatchesStackParamList = {
+  MatchesList: undefined;
+  MatchProfile: { matchId: string; otherUserName?: string; name?: string };
+};
+
+// Backward compatibility alias for pre-F6 screens
+export type ExploreStackParamList = HostelsStackParamList;
+
 export type MainTabParamList = {
   HomeTab: { email: string; name?: string };
-  Explore: NavigatorScreenParams<ExploreStackParamList> | undefined;
+  HostelsStack: NavigatorScreenParams<HostelsStackParamList> | undefined;
+  Chats: undefined;
   Chat: undefined;
   Matches: undefined;
+  Manage: undefined;
   Profile: undefined;
+};
+
+export type RootStackParamList = {
+  Splash: undefined;
+  GetStarted: undefined;
+  Login: undefined;
+  SignUp: undefined;
+  ForgotPassword: undefined;
+  ResetPassword: { email: string };
+  VerifyEmail: { email: string; name?: string; data?: OnboardingData };
+  ChooseIntent: undefined;
+  Essentials: undefined;
+  OnboardingAboutYou: { data: OnboardingData };
+  OnboardingLifestyle: { data: OnboardingData };
+  OnboardingComplete: { data: OnboardingData };
+  Home: { email: string; name?: string };
+  ManagerDashboard: { email: string };
+  Invites: undefined;
+  MyHostel: undefined;
+  Verification: undefined;
+  Settings: undefined;
+  EditProfileHub: undefined;
+  EditBasics: undefined;
+  EditLifestyle: undefined;
+  EditPreferences: undefined;
+  EditInterests: undefined;
+  Account: undefined;
+  Privacy: undefined;
+  PrivacyPolicy: undefined;
+  TermsOfService: undefined;
+  About: undefined;
+  HelpSupport: undefined;
+  EditProfile: undefined;
+  Preferences: undefined;
+  Notifications: undefined;
+  MatchProfile: { matchId: string; otherUserName?: string; name?: string };
+  IndividualChat: { matchId: string; otherUserName?: string; name?: string };
+  GroupChat: { hostelId: string; roomTypeId: string };
+  UpgradePremium: undefined;
+  InterestPicker: undefined;
+  HostelDetail: { hostelId: string };
+  AccessCode: { hostelId: string; roomTypeId?: string };
+  CodeVerified: { hostelId: string; code: string; roomTypeId?: string };
+  HoldPending: { hostelId?: string; roomTypeId?: string };
 };

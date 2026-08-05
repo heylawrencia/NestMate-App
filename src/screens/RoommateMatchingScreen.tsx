@@ -229,12 +229,7 @@ export default function RoommateMatchingScreen({ navigation, route }: Props) {
 
                   <TouchableOpacity
                     style={[styles.actionButton, styles.actionButtonMuted]}
-                    onPress={() =>
-                      navigation.navigate('Placeholder', {
-                        title: `Message ${candidate.name}`,
-                        description: 'Chat before you match will be available soon.',
-                      })
-                    }
+                    onPress={() => (navigation as any).navigate('HostelList')}
                     accessibilityLabel="Message"
                     accessibilityRole="button"
                   >

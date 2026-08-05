@@ -1,16 +1,22 @@
+/**
+ * HostelDetailScreen — Full-bleed gallery & hostel details screen (Spec §7.3)
+ *
+ * Opens on a full-bleed swipeable gallery from photoUrls with a page indicator (1 of N).
+ * Shows hostel name, location, rating badge, amenity chips, and room types with capacity and prices.
+ */
+
 import React, { useState } from 'react';
 import {
   Dimensions,
+  FlatList,
   Image,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CompositeScreenProps } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -18,317 +24,395 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import AppButton from '../components/AppButton';
 import AsyncBoundary from '../components/AsyncBoundary';
 import ElevatedCard from '../components/ElevatedCard';
-import GradientHeader from '../components/GradientHeader';
-import HeaderIconRow from '../components/HeaderIconRow';
-import { colors, spacing, typography } from '../theme';
-import { ExploreStackParamList, RootStackParamList } from '../navigation/types';
+import IconCircle from '../components/IconCircle';
+import Skeleton from '../components/Skeleton';
 import { useAsyncData } from '../hooks/useAsyncData';
-import { fetchHostelById, getPriceRange, getRoomTypeSummary } from '../services/hostelService';
-import { useDrawer } from '../context/DrawerContext';
+import { HostelsStackParamList, RootStackParamList } from '../navigation/types';
+import { fetchHostelById } from '../services/hostelService';
+import { colors, elevation, radius, space, type } from '../theme';
+import { RoomType } from '../types/hostel';
 
 type Props = CompositeScreenProps<
-  NativeStackScreenProps<ExploreStackParamList, 'HostelDetail'>,
+  NativeStackScreenProps<HostelsStackParamList, 'HostelDetail'>,
   NativeStackScreenProps<RootStackParamList>
 >;
 
-export default function HostelDetailScreen({ navigation, route }: Props) {
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+const AMENITY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  Wifi: 'wifi-outline',
+  Security: 'shield-checkmark-outline',
+  Generator: 'flash-outline',
+  Water: 'water-outline',
+  Laundry: 'shirt-outline',
+  Gym: 'fitness-outline',
+  StudyRoom: 'book-outline',
+  Parking: 'car-outline',
+};
+
+export default function HostelDetailScreen({ route, navigation }: Props) {
   const { hostelId } = route.params;
-  const { data: hostel, loading, error, reload } = useAsyncData(
-    () => fetchHostelById(hostelId),
-    [hostelId],
-  );
-  const { openDrawer } = useDrawer();
-  const [galleryWidth, setGalleryWidth] = useState(0);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [activePhotoIndex, setActivePhotoIndex] = useState(0);
 
-  const photos = hostel?.imageUrls?.length ? hostel.imageUrls : hostel?.imageUrl ? [hostel.imageUrl] : [];
-  const slideWidth = galleryWidth || Dimensions.get('window').width;
+  const {
+    data: hostel,
+    loading,
+    error,
+    reload,
+  } = useAsyncData(() => fetchHostelById(hostelId), [hostelId]);
 
-  function handleGalleryScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
-    const index = Math.round(e.nativeEvent.contentOffset.x / slideWidth);
-    setActiveIndex(index);
-  }
+  const photos = hostel?.imageUrls && hostel.imageUrls.length > 0
+    ? hostel.imageUrls
+    : hostel?.imageUrl
+    ? [hostel.imageUrl]
+    : [];
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <GradientHeader>
-        <HeaderIconRow
-          onBack={() => navigation.goBack()}
-          onMenuPress={openDrawer}
-          onNotificationsPress={() => navigation.navigate('Notifications')}
-        />
-        <Text style={styles.headerTitle}>{hostel?.name ?? 'Hostel'}</Text>
-      </GradientHeader>
-
+    <View style={styles.container}>
       <AsyncBoundary loading={loading} error={error} onRetry={reload}>
-        {hostel ? (
-          <ScrollView
-            style={styles.flex}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-          >
-            <View
-              style={styles.imagePlaceholder}
-              onLayout={(e) => setGalleryWidth(e.nativeEvent.layout.width)}
-            >
-              {photos.length > 0 ? (
-                <ScrollView
-                  horizontal
-                  pagingEnabled
-                  showsHorizontalScrollIndicator={false}
-                  onMomentumScrollEnd={handleGalleryScroll}
-                  onScroll={handleGalleryScroll}
-                  scrollEventThrottle={32}
-                  style={styles.gallery}
-                >
-                  {photos.map((url, index) => (
-                    <View key={url + index} style={{ width: slideWidth, height: '100%' }}>
-                      <Image source={{ uri: url }} style={styles.image} resizeMode="cover" />
-                    </View>
-                  ))}
-                </ScrollView>
-              ) : (
-                <Ionicons name="image-outline" size={40} color={colors.textMuted} />
-              )}
-              {photos.length > 1 ? (
-                <View style={styles.photoCountBadge}>
-                  <Text style={styles.photoCountText}>
-                    {activeIndex + 1}/{photos.length}
-                  </Text>
-                </View>
-              ) : null}
+        {loading ? (
+          <SafeAreaView style={styles.loadingContainer}>
+            <Skeleton variant="card" height={280} />
+            <View style={{ padding: space.lg, gap: space.md }}>
+              <Skeleton variant="text" width="60%" height={28} />
+              <Skeleton variant="text" width="40%" height={18} />
+              <Skeleton variant="card" height={100} />
             </View>
-
-            {photos.length > 1 ? (
-              <View style={styles.imageDots}>
-                {photos.map((url, index) => (
-                  <View
-                    key={url + index}
-                    style={[styles.imageDot, index === activeIndex && styles.imageDotActive]}
+          </SafeAreaView>
+        ) : hostel ? (
+          <View style={{ flex: 1 }}>
+            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+              {/* Full-Bleed Swipeable Gallery */}
+              <View style={styles.galleryWrapper}>
+                {photos.length > 0 ? (
+                  <FlatList
+                    data={photos}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    keyExtractor={(_, idx) => String(idx)}
+                    onScroll={(e) => {
+                      const offset = e.nativeEvent.contentOffset.x;
+                      const index = Math.round(offset / SCREEN_WIDTH);
+                      setActivePhotoIndex(index);
+                    }}
+                    renderItem={({ item }) => (
+                      <Image source={{ uri: item }} style={styles.galleryPhoto} resizeMode="cover" />
+                    )}
                   />
-                ))}
-              </View>
-            ) : null}
-
-            <View style={styles.content}>
-              <View style={styles.titleRow}>
-                <Text style={styles.title}>{hostel.name}</Text>
-                <View style={styles.ratingRow}>
-                  <Ionicons name="star" size={16} color="#F5A623" />
-                  <Text style={styles.ratingText}>{hostel.rating}</Text>
-                </View>
-              </View>
-
-              <View style={styles.locationRow}>
-                <Ionicons name="location-outline" size={16} color={colors.textMuted} />
-                <Text style={styles.locationText}>
-                  {hostel.location} · {hostel.distanceNote}
-                </Text>
-              </View>
-
-              <View style={styles.amenitiesRow}>
-                {hostel.amenities.map((amenity) => (
-                  <View key={amenity} style={styles.amenityPill}>
-                    <Text style={styles.amenityText}>{amenity}</Text>
+                ) : (
+                  <View style={styles.placeholderGallery}>
+                    <Ionicons name="business-outline" size={64} color={colors.inkFaint} />
                   </View>
-                ))}
+                )}
+
+                {/* Back Button Overlay */}
+                <SafeAreaView style={styles.backButtonOverlay}>
+                  <TouchableOpacity
+                    style={styles.circleBackBtn}
+                    onPress={() => navigation.goBack()}
+                    accessibilityLabel="Go back"
+                    accessibilityRole="button"
+                  >
+                    <Ionicons name="chevron-back" size={24} color={colors.ink} />
+                  </TouchableOpacity>
+                </SafeAreaView>
+
+                {/* Gallery Page Indicator */}
+                {photos.length > 1 && (
+                  <View style={styles.pageIndicatorPill}>
+                    <Text style={styles.pageIndicatorText}>
+                      {activePhotoIndex + 1} of {photos.length}
+                    </Text>
+                  </View>
+                )}
               </View>
 
-              <ElevatedCard style={styles.summaryCard}>
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Price range</Text>
-                  <Text style={styles.summaryValue}>
-                    GHS {getPriceRange(hostel).min.toLocaleString()} – {getPriceRange(hostel).max.toLocaleString()}
-                    /yr
-                  </Text>
-                </View>
-                <View style={[styles.summaryRow, styles.summaryRowLast]}>
-                  <Text style={styles.summaryLabel}>Room types</Text>
-                  <Text style={styles.summaryValue}>{getRoomTypeSummary(hostel)} in a room</Text>
-                </View>
-              </ElevatedCard>
+              {/* Details Body */}
+              <View style={styles.bodyContainer}>
+                {/* Header Info */}
+                <View style={styles.titleRow}>
+                  <View style={styles.titleTextCol}>
+                    <Text style={styles.hostelName}>{hostel.name}</Text>
+                    <Text style={styles.hostelLocation}>
+                      <Ionicons name="location-outline" size={14} color={colors.primary} /> {hostel.location}
+                    </Text>
+                  </View>
 
-              <AppButton
-                title="Choose a room"
-                onPress={() => navigation.navigate('ChooseRoomType', { hostelId })}
-              />
+                  <View style={styles.ratingBadge}>
+                    <Ionicons name="star" size={14} color="#F59E0B" />
+                    <Text style={styles.ratingText}>{hostel.rating.toFixed(1)}</Text>
+                  </View>
+                </View>
 
-              <TouchableOpacity
-                style={styles.secondaryLink}
-                onPress={() => navigation.navigate('AccessCode', { hostelId })}
-              >
-                <Text style={styles.secondaryLinkText}>Already paid? Enter your access code</Text>
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
-        ) : (
-          <Text style={styles.notFoundText}>Hostel not found.</Text>
-        )}
+                {/* Price Subtitle */}
+                <Text style={styles.startingPriceText}>
+                  from GH₵{hostel.fromPricePerYear.toLocaleString()} <Text style={styles.periodText}>/ year</Text>
+                </Text>
+
+                {/* Amenities Chips */}
+                {hostel.amenities && hostel.amenities.length > 0 && (
+                  <View style={styles.amenitiesSection}>
+                    <Text style={styles.sectionTitle}>Amenities</Text>
+                    <View style={styles.amenitiesGrid}>
+                      {hostel.amenities.map((amenity) => (
+                        <View key={amenity} style={styles.amenityChip}>
+                          <Ionicons
+                            name={AMENITY_ICONS[amenity] ?? 'checkmark-circle-outline'}
+                            size={16}
+                            color={colors.primary}
+                          />
+                          <Text style={styles.amenityText}>{amenity}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {/* Room Types Section */}
+                <View style={styles.roomTypesSection}>
+                  <Text style={styles.sectionTitle}>Available Room Types</Text>
+
+                  {hostel.roomTypes && hostel.roomTypes.length > 0 ? (
+                    hostel.roomTypes.map((rt: RoomType) => (
+                      <ElevatedCard key={rt.id} style={styles.roomTypeCard}>
+                        <View style={styles.rtHeaderRow}>
+                          <IconCircle size={40} backgroundColor={colors.primaryLight}>
+                            <Ionicons name="bed-outline" size={20} color={colors.primary} />
+                          </IconCircle>
+
+                          <View style={styles.rtTextCol}>
+                            <Text style={styles.rtLabel}>{rt.label}</Text>
+                            <Text style={styles.rtPrice}>
+                              GH₵{rt.pricePerYear.toLocaleString()} <Text style={styles.periodText}>/ year</Text>
+                            </Text>
+                          </View>
+                        </View>
+
+                        <View style={styles.rtFooterRow}>
+                          <Text style={styles.bedsLeftText}>
+                            {rt.bedsLeft > 0 ? `${rt.bedsLeft} beds free` : 'Fully booked'}
+                          </Text>
+
+                          <AppButton
+                            title="Choose Room →"
+                            variant="primary"
+                            size="md"
+                            disabled={rt.bedsLeft <= 0}
+                            onPress={() =>
+                              navigation.navigate('PickRoom', {
+                                hostelId: hostel.id,
+                                roomTypeId: rt.id,
+                              })
+                            }
+                          />
+                        </View>
+                      </ElevatedCard>
+                    ))
+                  ) : (
+                    <Text style={styles.noRoomsText}>No room types listed for this hostel.</Text>
+                  )}
+                </View>
+              </View>
+            </ScrollView>
+          </View>
+        ) : null}
       </AsyncBoundary>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
-    backgroundColor: colors.surfaceTint,
+    backgroundColor: colors.background,
   },
-  headerTitle: {
-    fontSize: typography.h1,
-    fontWeight: typography.weightBold,
-    color: colors.white,
-  },
-  flex: {
+  loadingContainer: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: spacing.xl,
+    flexGrow: 1,
+    paddingBottom: space.xxl,
   },
-  imagePlaceholder: {
-    width: '100%',
-    aspectRatio: 16 / 10,
-    paddingHorizontal: spacing.lg,
+  galleryWrapper: {
+    width: SCREEN_WIDTH,
+    height: 280,
+    backgroundColor: colors.line,
+    position: 'relative',
+  },
+  galleryPhoto: {
+    width: SCREEN_WIDTH,
+    height: 280,
+  },
+  placeholderGallery: {
+    width: SCREEN_WIDTH,
+    height: 280,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backButtonOverlay: {
+    position: 'absolute',
+    top: space.md,
+    left: space.md,
+    zIndex: 10,
+  },
+  circleBackBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: spacing.lg,
-    borderRadius: 20,
-    overflow: 'hidden',
+    ...elevation.card,
   },
-  gallery: {
-    width: '100%',
-    height: '100%',
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-  },
-  photoCountBadge: {
+  pageIndicatorPill: {
     position: 'absolute',
-    right: spacing.md,
-    bottom: spacing.md,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    borderRadius: 10,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
+    bottom: space.md,
+    right: space.md,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    paddingHorizontal: space.md,
+    paddingVertical: space.xs,
+    borderRadius: radius.pill,
   },
-  photoCountText: {
-    fontSize: typography.caption,
-    fontWeight: typography.weightBold,
+  pageIndicatorText: {
+    fontFamily: type.micro.fontFamily,
+    fontSize: 11,
     color: colors.white,
+    fontWeight: '600',
   },
-  imageDots: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  imageDot: {
-    width: 20,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.border,
-  },
-  imageDotActive: {
-    backgroundColor: colors.primary,
-  },
-  content: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
+  bodyContainer: {
+    padding: space.lg,
   },
   titleRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: spacing.xs,
   },
-  title: {
-    fontSize: typography.h2,
-    fontWeight: typography.weightBold,
-    color: colors.text,
+  titleTextCol: {
+    flex: 1,
+    marginRight: space.md,
   },
-  ratingRow: {
+  hostelName: {
+    fontFamily: type.h1.fontFamily,
+    fontSize: type.h1.fontSize,
+    color: colors.ink,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  hostelLocation: {
+    fontFamily: type.caption.fontFamily,
+    fontSize: 14,
+    color: colors.inkMuted,
+  },
+  ratingBadge: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: space.sm + 2,
+    paddingVertical: space.xs,
+    borderRadius: radius.pill,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    borderWidth: 1,
+    borderColor: colors.line,
   },
   ratingText: {
-    fontSize: typography.body,
-    fontWeight: typography.weightMedium,
-    color: colors.text,
+    fontFamily: type.micro.fontFamily,
+    fontSize: 12,
+    color: colors.ink,
+    fontWeight: '700',
   },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginBottom: spacing.md,
+  startingPriceText: {
+    fontFamily: type.price.fontFamily,
+    fontSize: 22,
+    color: colors.primary,
+    fontWeight: '700',
+    marginTop: space.md,
   },
-  locationText: {
-    fontSize: typography.body,
-    color: colors.textMuted,
+  periodText: {
+    fontFamily: type.body.fontFamily,
+    fontSize: 14,
+    color: colors.inkMuted,
+    fontWeight: '400',
   },
-  amenitiesRow: {
+  amenitiesSection: {
+    marginTop: space.xl,
+  },
+  sectionTitle: {
+    fontFamily: type.h2.fontFamily,
+    fontSize: type.h2.fontSize,
+    color: colors.ink,
+    fontWeight: '600',
+    marginBottom: space.sm,
+  },
+  amenitiesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
+    gap: space.xs,
   },
-  amenityPill: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 20,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    backgroundColor: colors.background,
-  },
-  amenityText: {
-    fontSize: typography.caption,
-    fontWeight: typography.weightMedium,
-    color: colors.text,
-  },
-  summaryCard: {
-    padding: spacing.md,
-    marginBottom: spacing.md,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingBottom: spacing.sm,
-    marginBottom: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  summaryRowLast: {
-    paddingBottom: 0,
-    marginBottom: 0,
-    borderBottomWidth: 0,
-  },
-  summaryLabel: {
-    fontSize: typography.body,
-    color: colors.textMuted,
-  },
-  summaryValue: {
-    fontSize: typography.body,
-    fontWeight: typography.weightBold,
-    color: colors.text,
-  },
-  secondaryLink: {
+  amenityChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.md,
+    backgroundColor: colors.surface,
+    borderColor: colors.line,
+    borderWidth: 1,
+    paddingHorizontal: space.md,
+    paddingVertical: space.xs + 2,
+    borderRadius: radius.pill,
+    gap: space.xs,
   },
-  secondaryLinkText: {
-    fontSize: typography.caption,
-    color: colors.textMuted,
+  amenityText: {
+    fontFamily: type.caption.fontFamily,
+    fontSize: 13,
+    color: colors.ink,
   },
-  notFoundText: {
-    fontSize: typography.body,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: spacing.xl,
+  roomTypesSection: {
+    marginTop: space.xl,
+  },
+  roomTypeCard: {
+    padding: space.lg,
+    borderRadius: radius.xl,
+    marginBottom: space.md,
+  },
+  rtHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    marginBottom: space.md,
+  },
+  rtTextCol: {
+    flex: 1,
+  },
+  rtLabel: {
+    fontFamily: type.h3.fontFamily,
+    fontSize: type.h3.fontSize,
+    color: colors.ink,
+    fontWeight: '600',
+  },
+  rtPrice: {
+    fontFamily: type.price.fontFamily,
+    fontSize: 16,
+    color: colors.primary,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  rtFooterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+    paddingTop: space.md,
+  },
+  bedsLeftText: {
+    fontFamily: type.caption.fontFamily,
+    fontSize: 13,
+    color: colors.inkMuted,
+  },
+  noRoomsText: {
+    fontFamily: type.caption.fontFamily,
+    fontSize: 13,
+    color: colors.inkMuted,
+    fontStyle: 'italic',
   },
 });

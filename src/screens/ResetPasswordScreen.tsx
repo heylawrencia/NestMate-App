@@ -1,22 +1,29 @@
+/**
+ * ResetPasswordScreen — Execute password reset surface (Spec §5.6)
+ *
+ * Enforces strict B1 password policy (8-64 chars, letter + digit, no whitespace padding)
+ * and uses 6-box CodeInput for code entry.
+ */
+
 import React, { useState } from 'react';
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import AppButton from '../components/AppButton';
-import AppTextInput from '../components/AppTextInput';
 import CodeInput from '../components/CodeInput';
-import ScreenHeader from '../components/ScreenHeader';
-import { colors, spacing, typography } from '../theme';
+import PasswordField from '../components/PasswordField';
 import { RootStackParamList } from '../navigation/types';
 import { resetPassword } from '../services/authService';
+import { colors, elevation, radius, space, type } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ResetPassword'>;
 
@@ -27,24 +34,45 @@ export default function ResetPasswordScreen({ navigation, route }: Props) {
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState<string | undefined>();
+  const [errors, setErrors] = useState<{
+    code?: string;
+    newPassword?: string;
+    confirmPassword?: string;
+    form?: string;
+  }>({});
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
 
-  async function handleReset() {
+  const validate = () => {
+    const newErrors: typeof errors = {};
+
     if (code.length < CODE_LENGTH) {
-      setError('Enter the full 6-digit code.');
-      return;
+      newErrors.code = 'Please enter the complete 6-digit reset code.';
     }
-    if (newPassword.length < 8) {
-      setError('Password must be at least 8 characters.');
-      return;
+
+    if (!newPassword) {
+      newErrors.newPassword = 'New password is required.';
+    } else if (newPassword.trim() !== newPassword) {
+      newErrors.newPassword = 'Password cannot start or end with a whitespace character.';
+    } else if (newPassword.length < 8 || newPassword.length > 64) {
+      newErrors.newPassword = 'Password must be between 8 and 64 characters.';
+    } else if (!/[A-Za-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+      newErrors.newPassword = 'Password must contain at least one letter and one number.';
     }
-    if (newPassword !== confirmPassword) {
-      setError('Passwords do not match.');
-      return;
+
+    if (!confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your new password.';
+    } else if (confirmPassword !== newPassword) {
+      newErrors.confirmPassword = 'Passwords do not match.';
     }
-    setError(undefined);
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleReset = async () => {
+    setErrors({});
+    if (!validate()) return;
 
     setLoading(true);
     const result = await resetPassword(email, code, newPassword);
@@ -53,68 +81,125 @@ export default function ResetPasswordScreen({ navigation, route }: Props) {
     if (result.success) {
       setDone(true);
     } else {
-      setError(result.errorMessage ?? 'That code doesn’t look right. Try again.');
+      setErrors({ form: result.errorMessage ?? 'Invalid reset code. Please check and try again.' });
     }
-  }
+  };
 
   if (done) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <ScreenHeader title="Password Reset" />
-          <Text style={styles.subtitle}>
-            Your password has been changed. Log in with your new password.
+      <View style={styles.container}>
+        <View style={styles.doneContent}>
+          <View style={styles.logoBadge}>
+            <Image
+              source={require('../../assets/logo.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
+          </View>
+          <Text style={styles.headingTitle}>Password Changed!</Text>
+          <Text style={styles.headingSubhead}>
+            Your password has been successfully updated. You can now log in with your new credentials.
           </Text>
-          <AppButton title="Back to Log In" onPress={() => navigation.navigate('Login')} />
-        </ScrollView>
-      </SafeAreaView>
+
+          <View style={styles.doneActionRow}>
+            <AppButton
+              title="Back to Log In"
+              variant="primary"
+              size="lg"
+              onPress={() => navigation.navigate('Login')}
+            />
+          </View>
+        </View>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          <ScreenHeader title="Reset Password" />
-          <Text style={styles.subtitle}>
-            Enter the 6-digit code sent to{'\n'}{email}
-          </Text>
-
-          <CodeInput length={CODE_LENGTH} onChange={setCode} />
-
-          <View style={styles.fieldSpacing}>
-            <AppTextInput
-              label="New Password"
-              placeholder="At least 8 characters"
-              value={newPassword}
-              onChangeText={setNewPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
+    <View style={styles.container}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header */}
+          <View style={styles.headerContainer}>
+            <View style={styles.logoBadge}>
+              <Image
+                source={require('../../assets/logo.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+            </View>
+            <Text style={styles.headingTitle}>Reset Password</Text>
+            <Text style={styles.headingSubhead}>
+              Enter the 6-digit code sent to{'\n'}
+              <Text style={styles.emailHighlight}>{email}</Text>
+            </Text>
           </View>
 
-          <AppTextInput
-            label="Confirm New Password"
-            placeholder="Re-enter your new password"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+          {/* Form Card */}
+          <View style={styles.card}>
+            <Text style={styles.sectionLabel}>Verification Code</Text>
+            <View style={styles.codeContainer}>
+              <CodeInput length={CODE_LENGTH} onChange={setCode} />
+            </View>
+            {errors.code ? <Text style={styles.inlineError}>{errors.code}</Text> : null}
 
-          {error ? <Text style={styles.formError}>{error}</Text> : null}
+            <PasswordField
+              label="New Password"
+              placeholder="Create new password"
+              value={newPassword}
+              onChangeText={(text) => {
+                setNewPassword(text);
+                if (errors.newPassword) setErrors((prev) => ({ ...prev, newPassword: undefined }));
+              }}
+              error={errors.newPassword}
+              showStrengthMeter={true}
+            />
 
-          <AppButton title="Reset Password" onPress={handleReset} loading={loading} />
+            <PasswordField
+              label="Confirm New Password"
+              placeholder="Re-enter new password"
+              value={confirmPassword}
+              onChangeText={(text) => {
+                setConfirmPassword(text);
+                if (errors.confirmPassword) setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
+              }}
+              error={errors.confirmPassword}
+              showStrengthMeter={false}
+            />
+
+            {errors.form ? <Text style={styles.inlineError}>{errors.form}</Text> : null}
+
+            <View style={styles.actionRow}>
+              <AppButton
+                title="Reset password"
+                onPress={handleReset}
+                loading={loading}
+                variant="primary"
+                size="lg"
+              />
+            </View>
+          </View>
+
+          {/* Footer */}
+          <View style={styles.footerRow}>
+            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+              <Text style={styles.footerLink}>← Cancel and return to Log In</Text>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
     backgroundColor: colors.background,
   },
@@ -123,20 +208,94 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xl,
+    paddingHorizontal: space.lg,
+    paddingTop: space.xxl,
+    paddingBottom: space.xl,
+    justifyContent: 'center',
   },
-  subtitle: {
-    fontSize: typography.body,
-    color: colors.textMuted,
-    marginBottom: spacing.lg,
+  doneContent: {
+    flex: 1,
+    paddingHorizontal: space.xl,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  fieldSpacing: {
-    marginTop: spacing.lg,
+  doneActionRow: {
+    width: '100%',
+    marginTop: space.xl,
   },
-  formError: {
-    color: colors.error,
-    fontSize: typography.caption,
-    marginBottom: spacing.md,
+  headerContainer: {
+    alignItems: 'center',
+    marginBottom: space.xl,
+  },
+  logoBadge: {
+    width: 72,
+    height: 72,
+    borderRadius: radius.xl,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: space.lg,
+  },
+  logoImage: {
+    width: 48,
+    height: 48,
+  },
+  headingTitle: {
+    fontFamily: type.display.fontFamily,
+    fontSize: type.display.fontSize,
+    color: colors.ink,
+    textAlign: 'center',
+    marginBottom: space.xs,
+  },
+  headingSubhead: {
+    fontFamily: type.body.fontFamily,
+    fontSize: type.body.fontSize,
+    color: colors.inkMuted,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  emailHighlight: {
+    fontFamily: type.bodyStrong.fontFamily,
+    color: colors.ink,
+    fontWeight: '600',
+  },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: space.xl,
+    ...elevation.card,
+    marginBottom: space.xl,
+  },
+  sectionLabel: {
+    fontFamily: type.caption.fontFamily,
+    fontSize: 13,
+    color: colors.inkMuted,
+    fontWeight: '500',
+    marginBottom: space.sm,
+  },
+  codeContainer: {
+    marginBottom: space.md,
+    alignItems: 'center',
+  },
+  inlineError: {
+    fontFamily: type.caption.fontFamily,
+    fontSize: 13,
+    color: colors.danger,
+    textAlign: 'center',
+    marginBottom: space.md,
+  },
+  actionRow: {
+    marginTop: space.xs,
+  },
+  footerRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  footerLink: {
+    fontFamily: type.bodyStrong.fontFamily,
+    fontSize: 15,
+    color: colors.primary,
+    fontWeight: '600',
   },
 });

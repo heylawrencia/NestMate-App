@@ -1,182 +1,231 @@
+/**
+ * SignUpScreen — Account registration screen (Spec §5.3–§5.5)
+ *
+ * Features fullName, email, PasswordField, confirm password, strict password rules,
+ * inline validation, live Terms & Privacy links, and zero Google/OAuth stubs.
+ */
+
 import React, { useState } from 'react';
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import AppTextInput from '../components/AppTextInput';
 import AppButton from '../components/AppButton';
-import ScreenHeader from '../components/ScreenHeader';
-import { colors, spacing, typography } from '../theme';
+import AppTextInput from '../components/AppTextInput';
+import PasswordField from '../components/PasswordField';
+import { useAuth } from '../context/AuthContext';
 import { RootStackParamList } from '../navigation/types';
+import { colors, elevation, radius, space, type } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SignUp'>;
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-interface FormErrors {
-  email?: string;
-  password?: string;
-  confirmPassword?: string;
-  terms?: string;
-}
-
 export default function SignUpScreen({ navigation }: Props) {
+  const { register } = useAuth();
+
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const [errors, setErrors] = useState<FormErrors>({});
+  const [loading, setLoading] = useState(false);
 
-  function validate(): boolean {
-    const nextErrors: FormErrors = {};
+  const [errors, setErrors] = useState<{
+    fullName?: string;
+    email?: string;
+    password?: string;
+    confirmPassword?: string;
+    form?: string;
+  }>({});
 
+  const validate = () => {
+    const newErrors: typeof errors = {};
+
+    // Full name rule
+    if (!fullName.trim()) {
+      newErrors.fullName = 'Full name is required';
+    }
+
+    // Email rule
     if (!email.trim()) {
-      nextErrors.email = 'Email is required.';
-    } else if (!EMAIL_REGEX.test(email.trim())) {
-      nextErrors.email = 'Enter a valid email address.';
-    } else if (!email.trim().toLowerCase().endsWith('@gmail.com')) {
-      nextErrors.email = 'Please sign up with a real Gmail address.';
+      newErrors.email = 'Email address is required';
+    } else if (!/\S+@\S+\.\S+/.test(email.trim())) {
+      newErrors.email = 'Enter a valid email address';
     }
 
+    // Password rules (Server B1 rules: 8-64 chars, letter + digit, no leading/trailing whitespace)
     if (!password) {
-      nextErrors.password = 'Password is required.';
-    } else if (password.length < 6) {
-      nextErrors.password = 'Password must be at least 6 characters.';
+      newErrors.password = 'Password is required';
+    } else if (password.trim() !== password) {
+      newErrors.password = 'Password cannot start or end with a whitespace character';
+    } else if (password.length < 8 || password.length > 64) {
+      newErrors.password = 'Password must be between 8 and 64 characters';
+    } else if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+      newErrors.password = 'Password must contain at least one letter and one number';
     }
 
-    if (confirmPassword !== password) {
-      nextErrors.confirmPassword = 'Passwords do not match.';
+    // Confirm password rule
+    if (!confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your password';
+    } else if (confirmPassword !== password) {
+      newErrors.confirmPassword = 'Passwords do not match';
     }
 
-    if (!agreedToTerms) {
-      nextErrors.terms = 'You must agree to the Terms of Service and Privacy Policy.';
-    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
-    setErrors(nextErrors);
-    return Object.keys(nextErrors).length === 0;
-  }
+  const handleSignUp = async () => {
+    setErrors({});
+    if (!validate()) return;
 
-  function handleSignUp() {
-    if (!validate()) {
-      return;
+    setLoading(true);
+    const result = await register(email.trim(), password, fullName.trim());
+    setLoading(false);
+
+    if (result.success) {
+      if (result.requiresVerification || result.needsVerification) {
+        navigation.navigate('VerifyEmail', { email: email.trim() });
+      } else {
+        (navigation as any).navigate('ChooseIntent');
+      }
+    } else {
+      setErrors({ form: result.errorMessage || 'Could not create account.' });
     }
-    navigation.navigate('OnboardingAboutYou', { data: { email: email.trim(), password } });
-  }
+  };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.container}>
       <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <ScreenHeader title="Create Account" onBack={() => navigation.goBack()} />
+          {/* Header */}
+          <View style={styles.headerContainer}>
+            <View style={styles.logoBadge}>
+              <Image
+                source={require('../../assets/logo.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+            </View>
+            <Text style={styles.headingTitle}>Create Account</Text>
+            <Text style={styles.headingSubhead}>Join NestMate to connect with verified roommates</Text>
+          </View>
 
-          <View style={styles.form}>
+          {/* Form Card */}
+          <View style={styles.card}>
+            <AppTextInput
+              label="Full Name"
+              placeholder="Ama Mensah"
+              value={fullName}
+              onChangeText={(text) => {
+                setFullName(text);
+                if (errors.fullName) setErrors((prev) => ({ ...prev, fullName: undefined }));
+              }}
+              error={errors.fullName}
+              autoCapitalize="words"
+            />
+
             <AppTextInput
               label="Email"
-              placeholder="you@example.com"
+              placeholder="you@knust.edu.gh"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(text) => {
+                setEmail(text);
+                if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
+              }}
               error={errors.email}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
             />
 
-            <AppTextInput
+            <PasswordField
               label="Password"
-              placeholder="Your password"
+              placeholder="Create a password"
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(text) => {
+                setPassword(text);
+                if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
+              }}
               error={errors.password}
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-              autoCorrect={false}
-              rightAccessory={
-                <TouchableOpacity
-                  onPress={() => setShowPassword((prev) => !prev)}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Ionicons
-                    name={showPassword ? 'eye-off' : 'eye'}
-                    size={20}
-                    color={colors.textMuted}
-                  />
-                </TouchableOpacity>
-              }
+              showStrengthMeter={true}
             />
 
-            <AppTextInput
+            <PasswordField
               label="Confirm Password"
               placeholder="Re-enter your password"
               value={confirmPassword}
-              onChangeText={setConfirmPassword}
+              onChangeText={(text) => {
+                setConfirmPassword(text);
+                if (errors.confirmPassword) setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
+              }}
               error={errors.confirmPassword}
-              secureTextEntry={!showConfirmPassword}
-              autoCapitalize="none"
-              autoCorrect={false}
-              rightAccessory={
-                <TouchableOpacity
-                  onPress={() => setShowConfirmPassword((prev) => !prev)}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Ionicons
-                    name={showConfirmPassword ? 'eye-off' : 'eye'}
-                    size={20}
-                    color={colors.textMuted}
-                  />
-                </TouchableOpacity>
-              }
+              showStrengthMeter={false}
             />
 
-            <TouchableOpacity
-              style={styles.termsRow}
-              onPress={() => setAgreedToTerms((prev) => !prev)}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.checkbox, agreedToTerms && styles.checkboxChecked]}>
-                {agreedToTerms ? (
-                  <Ionicons name="checkmark" size={14} color={colors.white} />
-                ) : null}
-              </View>
-              <Text style={styles.termsText}>
-                I agree to the Terms of Service and Privacy Policy
-              </Text>
-            </TouchableOpacity>
-            {errors.terms ? <Text style={styles.formError}>{errors.terms}</Text> : null}
+            {errors.form ? <Text style={styles.inlineFormError}>{errors.form}</Text> : null}
 
-            <AppButton title="Sign Up" onPress={handleSignUp} />
-
-            <View style={styles.logInRow}>
-              <Text style={styles.logInText}>Already have an account? </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                <Text style={styles.logInLink}>Log in</Text>
-              </TouchableOpacity>
+            <View style={styles.actionRow}>
+              <AppButton
+                title="Create account"
+                onPress={handleSignUp}
+                loading={loading}
+                variant="primary"
+                size="lg"
+              />
             </View>
+
+            {/* Terms and Privacy notice */}
+            <View style={styles.termsContainer}>
+              <Text style={styles.termsText}>
+                By creating an account you agree to our{' '}
+                <Text
+                  style={styles.termsLink}
+                  onPress={() => (navigation as any).navigate('TermsOfService')}
+                >
+                  Terms of Service
+                </Text>{' '}
+                and{' '}
+                <Text
+                  style={styles.termsLink}
+                  onPress={() => navigation.navigate('Privacy')}
+                >
+                  Privacy Policy
+                </Text>
+                .
+              </Text>
+            </View>
+          </View>
+
+          {/* Footer */}
+          <View style={styles.footerRow}>
+            <Text style={styles.footerText}>Already have an account? </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+              <Text style={styles.footerLink}>Log in</Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
     backgroundColor: colors.background,
   },
@@ -185,53 +234,89 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
+    paddingHorizontal: space.lg,
+    paddingTop: space.xxl,
+    paddingBottom: space.xl,
+    justifyContent: 'center',
   },
-  form: {
-    width: '100%',
-  },
-  termsRow: {
-    flexDirection: 'row',
+  headerContainer: {
     alignItems: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: space.xl,
   },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: colors.border,
+  logoBadge: {
+    width: 72,
+    height: 72,
+    borderRadius: radius.xl,
+    backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: spacing.sm,
+    marginBottom: space.lg,
   },
-  checkboxChecked: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+  logoImage: {
+    width: 48,
+    height: 48,
+  },
+  headingTitle: {
+    fontFamily: type.display.fontFamily,
+    fontSize: type.display.fontSize,
+    color: colors.ink,
+    textAlign: 'center',
+    marginBottom: space.xs,
+  },
+  headingSubhead: {
+    fontFamily: type.body.fontFamily,
+    fontSize: type.body.fontSize,
+    color: colors.inkMuted,
+    textAlign: 'center',
+  },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: space.xl,
+    ...elevation.card,
+    marginBottom: space.xl,
+  },
+  inlineFormError: {
+    fontFamily: type.caption.fontFamily,
+    fontSize: 13,
+    color: colors.danger,
+    textAlign: 'center',
+    marginBottom: space.md,
+  },
+  actionRow: {
+    marginTop: space.xs,
+  },
+  termsContainer: {
+    marginTop: space.lg,
   },
   termsText: {
-    flex: 1,
-    fontSize: typography.caption,
-    color: colors.textMuted,
+    fontFamily: type.caption.fontFamily,
+    fontSize: 12,
+    color: colors.inkMuted,
+    textAlign: 'center',
+    lineHeight: 18,
   },
-  formError: {
-    color: colors.error,
-    fontSize: typography.caption,
-    marginBottom: spacing.md,
+  termsLink: {
+    fontFamily: type.bodyStrong.fontFamily,
+    fontSize: 12,
+    color: colors.primary,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
-  logInRow: {
+  footerRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: spacing.lg,
+    alignItems: 'center',
   },
-  logInText: {
-    fontSize: typography.body,
-    color: colors.textMuted,
+  footerText: {
+    fontFamily: type.body.fontFamily,
+    fontSize: 15,
+    color: colors.inkMuted,
   },
-  logInLink: {
-    fontSize: typography.body,
+  footerLink: {
+    fontFamily: type.bodyStrong.fontFamily,
+    fontSize: 15,
     color: colors.primary,
-    fontWeight: typography.weightBold,
+    fontWeight: '600',
   },
 });

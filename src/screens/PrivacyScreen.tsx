@@ -66,12 +66,7 @@ export default function PrivacyScreen({ navigation }: Props) {
             icon="ban-outline"
             title="Blocked users"
             isLast
-            onPress={() =>
-              navigation.navigate('Placeholder', {
-                title: 'Blocked users',
-                description: "You haven't blocked anyone yet.",
-              })
-            }
+            onPress={() => (navigation as any).navigate('PrivacyPolicy')}
             right={
               <View style={styles.valueRow}>
                 <Text style={styles.valueText}>0</Text>
@@ -86,23 +81,13 @@ export default function PrivacyScreen({ navigation }: Props) {
           <DetailRow
             icon="download-outline"
             title="Download my data"
-            onPress={() =>
-              navigation.navigate('Placeholder', {
-                title: 'Download my data',
-                description: 'Exporting your data will be available soon.',
-              })
-            }
+            onPress={() => (navigation as any).navigate('PrivacyPolicy')}
           />
           <DetailRow
             icon="document-text-outline"
             title="Privacy Policy"
             isLast
-            onPress={() =>
-              navigation.navigate('Placeholder', {
-                title: 'Privacy Policy',
-                description: 'The full privacy policy will be available here soon.',
-              })
-            }
+            onPress={() => (navigation as any).navigate('PrivacyPolicy')}
           />
         </ElevatedCard>
 

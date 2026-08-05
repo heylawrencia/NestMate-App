@@ -21,7 +21,7 @@ export default function SettingsScreen({ navigation }: Props) {
         <ListRow label="Privacy" onPress={() => navigation.navigate('Privacy')} />
         <ListRow
           label="Notifications"
-          onPress={() => navigation.navigate('Placeholder', { title: 'Notifications' })}
+          onPress={() => navigation.navigate('Notifications')}
         />
         <ListRow label="Help & Support" onPress={() => navigation.navigate('HelpSupport')} />
         <ListRow label="About NestMate" isLast onPress={() => navigation.navigate('About')} />

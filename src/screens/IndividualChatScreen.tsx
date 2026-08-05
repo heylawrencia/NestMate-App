@@ -15,7 +15,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import ChatComposer from '../components/ChatComposer';
 import IconCircle from '../components/IconCircle';
-import { colors, spacing, typography } from '../theme';
+import { colors, radius, space, type } from '../theme';
 import { RootStackParamList } from '../navigation/types';
 import { useAsyncData } from '../hooks/useAsyncData';
 import { fetchMatchById } from '../services/roommateService';
@@ -61,9 +61,7 @@ export default function IndividualChatScreen({ navigation, route }: Props) {
 
   async function handleSend() {
     const text = draft.trim();
-    if (!text || sending) {
-      return;
-    }
+    if (!text || sending) return;
     setSending(true);
     setDraft('');
     const sent = await sendThreadMessage(matchId, text);
@@ -75,7 +73,9 @@ export default function IndividualChatScreen({ navigation, route }: Props) {
     if (item.type === 'divider') {
       return (
         <View style={styles.dividerRow}>
+          <View style={styles.dividerLine} />
           <Text style={styles.dividerText}>{item.label}</Text>
+          <View style={styles.dividerLine} />
         </View>
       );
     }
@@ -84,7 +84,9 @@ export default function IndividualChatScreen({ navigation, route }: Props) {
     return (
       <View style={[styles.bubbleRow, isMine && styles.bubbleRowMine]}>
         <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleTheirs]}>
-          <Text style={[styles.bubbleText, isMine && styles.bubbleTextMine]}>{item.message.text}</Text>
+          <Text style={[styles.bubbleText, isMine && styles.bubbleTextMine]}>
+            {item.message.text}
+          </Text>
         </View>
         <Text style={[styles.bubbleTime, isMine && styles.bubbleTimeMine]}>
           {formatMessageTime(item.message.sentAt)}
@@ -97,8 +99,11 @@ export default function IndividualChatScreen({ navigation, route }: Props) {
   const firstName = displayName.split(' ')[0] ?? '';
   const listItems = buildChatListItems(messages);
 
+  const matchPct = match?.matchPercent;
+
   return (
     <SafeAreaView style={styles.safeArea}>
+      {/* ── Header ─────────────────────────────────── */}
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -106,7 +111,7 @@ export default function IndividualChatScreen({ navigation, route }: Props) {
           accessibilityLabel="Go back"
           accessibilityRole="button"
         >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
+          <Ionicons name="arrow-back" size={24} color={colors.white} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -114,15 +119,15 @@ export default function IndividualChatScreen({ navigation, route }: Props) {
           activeOpacity={0.7}
           onPress={() => navigation.navigate('MatchProfile', { matchId })}
         >
-          <IconCircle size={36} backgroundColor={colors.primaryLight}>
+          <IconCircle size={38} backgroundColor={'rgba(255,255,255,0.2)'}>
             <Text style={styles.avatarInitial}>{displayName.charAt(0).toUpperCase()}</Text>
           </IconCircle>
           <View>
             <Text style={styles.headerName} numberOfLines={1}>
               {displayName}
             </Text>
-            {match?.matchPercent != null ? (
-              <Text style={styles.headerSubtitle}>{match.matchPercent}% match</Text>
+            {matchPct != null ? (
+              <Text style={styles.headerSubtitle}>✨ {matchPct}% match</Text>
             ) : null}
           </View>
         </TouchableOpacity>
@@ -133,10 +138,11 @@ export default function IndividualChatScreen({ navigation, route }: Props) {
           accessibilityLabel="View profile"
           accessibilityRole="button"
         >
-          <Ionicons name="information-circle-outline" size={24} color={colors.textMuted} />
+          <Ionicons name="information-circle-outline" size={24} color="rgba(255,255,255,0.8)" />
         </TouchableOpacity>
       </View>
 
+      {/* ── Messages ───────────────────────────────── */}
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -151,10 +157,14 @@ export default function IndividualChatScreen({ navigation, route }: Props) {
           />
         ) : (
           <View style={styles.emptyState}>
-            <Ionicons name="chatbubble-ellipses-outline" size={32} color={colors.textMuted} />
+            <IconCircle size={60} backgroundColor={colors.primaryLight}>
+              <Ionicons name="chatbubble-ellipses-outline" size={30} color={colors.primary} />
+            </IconCircle>
             <Text style={styles.emptyTitle}>No messages yet</Text>
             <Text style={styles.emptyDescription}>
-              {firstName ? `Say hello to ${firstName} to start the conversation.` : 'Say hello to start the conversation.'}
+              {firstName
+                ? `Say hello to ${firstName} to start the conversation.`
+                : 'Say hello to start the conversation.'}
             </Text>
           </View>
         )}
@@ -179,52 +189,64 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
+  // ── Header ─────────────────────────────────────────
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.background,
+    gap: space.sm,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.sm + 2,
+    backgroundColor: colors.primary,
   },
   headerIdentity: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: space.sm,
   },
   avatarInitial: {
-    fontSize: typography.body,
-    fontWeight: typography.weightBold,
-    color: colors.primary,
+    fontFamily: type.h3.fontFamily,
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.white,
   },
   headerName: {
-    fontSize: typography.body,
-    fontWeight: typography.weightBold,
-    color: colors.text,
+    fontFamily: type.bodyStrong.fontFamily,
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.white,
   },
   headerSubtitle: {
-    fontSize: typography.caption,
-    color: colors.success,
-    fontWeight: typography.weightMedium,
+    fontFamily: type.micro.fontFamily,
+    fontSize: 12,
+    color: colors.mint,
+    fontWeight: '600',
   },
+  // ── Messages ───────────────────────────────────────
   messagesContent: {
     flexGrow: 1,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
   },
   dividerRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: spacing.sm,
+    gap: space.sm,
+    marginVertical: space.md,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.line,
   },
   dividerText: {
-    fontSize: typography.caption,
-    color: colors.textMuted,
+    fontFamily: type.micro.fontFamily,
+    fontSize: 11,
+    color: colors.inkFaint,
+    letterSpacing: 0.3,
   },
   bubbleRow: {
-    marginBottom: spacing.md,
+    marginBottom: space.md,
     maxWidth: '78%',
     alignSelf: 'flex-start',
   },
@@ -233,9 +255,14 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   bubble: {
-    borderRadius: 16,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    borderRadius: radius.lg,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
   },
   bubbleTheirs: {
     backgroundColor: colors.surface,
@@ -246,36 +273,42 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 4,
   },
   bubbleText: {
-    fontSize: typography.body,
-    color: colors.text,
+    fontFamily: type.body.fontFamily,
+    fontSize: 15,
+    lineHeight: 21,
+    color: colors.ink,
   },
   bubbleTextMine: {
     color: colors.white,
   },
   bubbleTime: {
+    fontFamily: type.micro.fontFamily,
     fontSize: 11,
-    color: colors.textMuted,
+    color: colors.inkFaint,
     marginTop: 2,
   },
   bubbleTimeMine: {
     textAlign: 'right',
   },
+  // ── Empty State ────────────────────────────────────
   emptyState: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: space.xl,
+    gap: space.sm,
   },
   emptyTitle: {
-    fontSize: typography.body,
-    fontWeight: typography.weightBold,
-    color: colors.text,
-    marginTop: spacing.sm,
-    marginBottom: spacing.xs,
+    fontFamily: type.h3.fontFamily,
+    fontSize: type.h3.fontSize,
+    fontWeight: '600',
+    color: colors.ink,
   },
   emptyDescription: {
-    fontSize: typography.caption,
-    color: colors.textMuted,
+    fontFamily: type.caption.fontFamily,
+    fontSize: 13,
+    color: colors.inkMuted,
     textAlign: 'center',
+    lineHeight: 19,
   },
 });

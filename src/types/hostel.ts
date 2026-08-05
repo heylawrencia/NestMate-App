@@ -1,5 +1,12 @@
 export type HostelCategory = 'Hostels' | 'Apartments';
 
+export type HostelSortOption =
+  | 'RECOMMENDED'
+  | 'PRICE_ASC'
+  | 'PRICE_DESC'
+  | 'RATING_DESC'
+  | 'AVAILABILITY_DESC';
+
 export interface RoomType {
   id: string;
   label: string;
@@ -27,8 +34,23 @@ export interface Hostel {
 }
 
 export interface HostelSearchFilters {
-  category?: HostelCategory;
   query?: string;
+  category?: HostelCategory;
+  areas?: string[];
+  minPrice?: number;
+  maxPrice?: number;
+  capacities?: number[];
+  kind?: 'HOSTEL' | 'APARTMENT' | 'ANY';
+  availableOnly?: boolean;
+  sort?: HostelSortOption;
+}
+
+export interface HostelFilterOptions {
+  areas: string[];
+  minPrice: number;
+  maxPrice: number;
+  capacities: number[];
+  kinds: string[];
 }
 
 export interface VerifyAccessCodeResult {
@@ -41,7 +63,7 @@ export interface RoomSummary {
   label: string;
   capacity: number;
   bedsAvailable: number;
-  /** Average compatibility with current occupants, 0-100. Null for an empty room. */
+  /** Average compatibility with current occupants, 0-100. Null for an empty room or profile-less user. */
   myAvgCompatibility: number | null;
   /** First free bed in this room, if any - what gets held when the room is picked. */
   freeBedId?: string;

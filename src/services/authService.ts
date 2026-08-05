@@ -1,19 +1,10 @@
 import { LoginResult } from '../types/auth';
 import { api, ApiError, setToken } from './apiClient';
 
-/**
- * REAL implementation - calls the NESTMATE Spring Boot backend.
- * Seeded demo accounts (password: password123):
- *   ama@seed.nestmate.com · kojo@seed.nestmate.com
- *   abena@seed.nestmate.com · yaw@seed.nestmate.com
- *
- * Registration requires a @gmail.com address, and login is blocked until the
- * emailed code is verified (see verifyEmail below) - both enforced server-side.
- */
-
 interface BackendAuthResponse {
   userId: number;
   email: string;
+  fullName: string;
   token: string;
   role: 'STUDENT' | 'MANAGER';
   verified: boolean;
@@ -29,7 +20,7 @@ export async function login(email: string, password: string): Promise<LoginResul
     return {
       success: true,
       token: res.token,
-      user: { userId: res.userId, email: res.email, role: res.role },
+      user: { userId: res.userId, email: res.email, fullName: res.fullName, role: res.role, verified: res.verified },
     };
   } catch (e) {
     const message =
@@ -53,7 +44,7 @@ export async function register(
     return {
       success: true,
       token: res.token,
-      user: { userId: res.userId, email: res.email, role: res.role, verified: res.verified },
+      user: { userId: res.userId, email: res.email, fullName: res.fullName, role: res.role, verified: res.verified },
       requiresVerification: !res.verified,
       needsVerification: !res.verified,
     };

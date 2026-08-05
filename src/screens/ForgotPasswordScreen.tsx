@@ -1,5 +1,12 @@
+/**
+ * ForgotPasswordScreen — Password reset request surface (Spec §5.6)
+ *
+ * Uses v2 card styling, inline error validation, and smooth navigation to ResetPassword.
+ */
+
 import React, { useState } from 'react';
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -8,35 +15,28 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import AppTextInput from '../components/AppTextInput';
 import AppButton from '../components/AppButton';
-import IconCircle from '../components/IconCircle';
-import ScreenHeader from '../components/ScreenHeader';
-import { colors, spacing, typography } from '../theme';
+import AppTextInput from '../components/AppTextInput';
 import { RootStackParamList } from '../navigation/types';
 import { forgotPassword } from '../services/authService';
+import { colors, elevation, radius, space, type } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ForgotPassword'>;
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function ForgotPasswordScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
 
-  async function handleSendResetLink() {
+  const handleSendResetLink = async () => {
     const trimmedEmail = email.trim();
-
     if (!trimmedEmail) {
-      setError('Email is required.');
+      setError('Email address is required.');
       return;
     }
-    if (!EMAIL_REGEX.test(trimmedEmail)) {
+    if (!/\S+@\S+\.\S+/.test(trimmedEmail)) {
       setError('Enter a valid email address.');
       return;
     }
@@ -47,54 +47,75 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
     setLoading(false);
 
     navigation.navigate('ResetPassword', { email: trimmedEmail });
-  }
+  };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.container}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <ScreenHeader title="Forgot Password" />
+          {/* Header */}
+          <View style={styles.headerContainer}>
+            <View style={styles.logoBadge}>
+              <Image
+                source={require('../../assets/logo.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+            </View>
+            <Text style={styles.headingTitle}>Forgot Password?</Text>
+            <Text style={styles.headingSubhead}>
+              Enter your registered email address to receive a 6-digit reset code
+            </Text>
+          </View>
 
-          <IconCircle size={96} style={styles.iconCircle}>
-            <Ionicons name="mail-outline" size={40} color={colors.text} />
-          </IconCircle>
-
-          <Text style={styles.subtitle}>
-            Enter your email and we&apos;ll send you a code to reset your password.
-          </Text>
-
-          <View style={styles.form}>
+          {/* Form Card */}
+          <View style={styles.card}>
             <AppTextInput
               label="Email"
-              placeholder="Email"
+              placeholder="you@knust.edu.gh"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(text) => {
+                setEmail(text);
+                if (error) setError(undefined);
+              }}
               error={error}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
             />
 
-            <AppButton title="Send Reset Code" onPress={handleSendResetLink} loading={loading} />
+            <View style={styles.actionRow}>
+              <AppButton
+                title="Send reset code"
+                onPress={handleSendResetLink}
+                loading={loading}
+                variant="primary"
+                size="lg"
+              />
+            </View>
           </View>
 
-          <TouchableOpacity style={styles.footerLink} onPress={() => navigation.goBack()}>
-            <Text style={styles.footerLinkText}>Back to Log In</Text>
-          </TouchableOpacity>
+          {/* Footer */}
+          <View style={styles.footerRow}>
+            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+              <Text style={styles.footerLink}>← Back to Log In</Text>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
     backgroundColor: colors.background,
   },
@@ -103,28 +124,61 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    paddingHorizontal: space.lg,
+    paddingTop: space.xxl,
+    paddingBottom: space.xl,
+    justifyContent: 'center',
+  },
+  headerContainer: {
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xl,
+    marginBottom: space.xl,
   },
-  iconCircle: {
-    marginBottom: spacing.lg,
+  logoBadge: {
+    width: 72,
+    height: 72,
+    borderRadius: radius.xl,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: space.lg,
   },
-  subtitle: {
-    fontSize: typography.body,
-    color: colors.textMuted,
+  logoImage: {
+    width: 48,
+    height: 48,
+  },
+  headingTitle: {
+    fontFamily: type.display.fontFamily,
+    fontSize: type.display.fontSize,
+    color: colors.ink,
     textAlign: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: space.xs,
   },
-  form: {
-    width: '100%',
+  headingSubhead: {
+    fontFamily: type.body.fontFamily,
+    fontSize: type.body.fontSize,
+    color: colors.inkMuted,
+    textAlign: 'center',
+    paddingHorizontal: space.md,
+  },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: space.xl,
+    ...elevation.card,
+    marginBottom: space.xl,
+  },
+  actionRow: {
+    marginTop: space.sm,
+  },
+  footerRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   footerLink: {
-    marginTop: spacing.lg,
-  },
-  footerLinkText: {
-    fontSize: typography.body,
+    fontFamily: type.bodyStrong.fontFamily,
+    fontSize: 15,
     color: colors.primary,
-    fontWeight: typography.weightBold,
+    fontWeight: '600',
   },
 });

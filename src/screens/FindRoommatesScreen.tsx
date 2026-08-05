@@ -65,13 +65,7 @@ export default function FindRoommatesScreen({ navigation, route }: Props) {
             </SelectableCard>
 
             <SelectableCard
-              onPress={() =>
-                navigation.navigate('Placeholder', {
-                  title: 'Room with Friends',
-                  description:
-                    'Ask your friends to enter the same access code and room type, then submit together as a group.',
-                })
-              }
+              onPress={() => (navigation as any).navigate('RoommateGroup', { hostelId, roomTypeId })}
               style={styles.optionCard}
             >
               <IconCircle size={44} backgroundColor={colors.surface}>

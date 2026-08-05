@@ -1,8 +1,15 @@
+/**
+ * VerifyEmailScreen — 6-digit email code verification surface (Spec §5.4)
+ *
+ * Features 6-box CodeInput with auto-advance and paste support, 30s countdown resend cooldown,
+ * clear verification requirements text, and inline error feedback.
+ */
+
 import React, { useEffect, useState } from 'react';
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,11 +20,9 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import AppButton from '../components/AppButton';
 import CodeInput from '../components/CodeInput';
-import ScreenHeader from '../components/ScreenHeader';
-import { colors, spacing, typography } from '../theme';
 import { RootStackParamList } from '../navigation/types';
 import { resendVerification, verifyEmail } from '../services/authService';
-import { createLifestyleProfile } from '../services/profileService';
+import { colors, elevation, radius, space, type } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VerifyEmail'>;
 
@@ -25,7 +30,7 @@ const CODE_LENGTH = 6;
 const RESEND_COOLDOWN_SECONDS = 30;
 
 export default function VerifyEmailScreen({ navigation, route }: Props) {
-  const { email, name, data } = route.params;
+  const { email } = route.params;
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
@@ -33,105 +38,113 @@ export default function VerifyEmailScreen({ navigation, route }: Props) {
   const [resetKey, setResetKey] = useState(0);
 
   useEffect(() => {
-    if (cooldown === 0) {
-      return;
-    }
+    if (cooldown === 0) return;
     const timer = setInterval(() => {
       setCooldown((prev) => Math.max(prev - 1, 0));
     }, 1000);
     return () => clearInterval(timer);
   }, [cooldown]);
 
-  function goHome() {
-    navigation.reset({ index: 0, routes: [{ name: 'Home', params: { email, name } }] });
-  }
-
-  async function handleResend() {
-    if (cooldown > 0) {
-      return;
-    }
+  const handleResend = async () => {
+    if (cooldown > 0) return;
     setCode('');
     setError(undefined);
     setCooldown(RESEND_COOLDOWN_SECONDS);
     setResetKey((prev) => prev + 1);
     await resendVerification(email);
-  }
+  };
 
-  async function handleVerify() {
+  const handleVerify = async () => {
     if (code.length < CODE_LENGTH) {
-      setError('Enter the full 6-digit code.');
+      setError('Please enter the complete 6-digit code.');
       return;
     }
     setError(undefined);
 
     setLoading(true);
     const result = await verifyEmail(email, code);
+    setLoading(false);
 
     if (result.success) {
-      // Only reachable from a brand-new registration (data comes from
-      // OnboardingComplete) - the account is authenticated for the first
-      // time now, so this is the first safe point to save the profile
-      // onboarding collected.
-      if (data) {
-        const profileResult = await createLifestyleProfile(data);
-        if (!profileResult.success) {
-          console.warn('createLifestyleProfile failed after verification:', profileResult.errorMessage);
-        }
-      }
-      setLoading(false);
-      goHome();
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'ChooseIntent' }],
+      });
     } else {
-      setLoading(false);
-      setError(result.errorMessage ?? 'That code doesn’t look right. Try again.');
+      setError(result.errorMessage ?? 'Invalid verification code. Please try again.');
     }
-  }
+  };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.container}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <ScreenHeader title="Verify Your Email" />
-          <Text style={styles.subtitle}>
-            Enter the 6-digit code sent to{'\n'}{email}
-            {'\n\n'}Verification is required before you can use NESTMATE.
-          </Text>
-
-          <View style={styles.codeRow}>
-            <CodeInput key={resetKey} length={CODE_LENGTH} onChange={setCode} />
+          {/* Header */}
+          <View style={styles.headerContainer}>
+            <View style={styles.logoBadge}>
+              <Image
+                source={require('../../assets/logo.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+            </View>
+            <Text style={styles.headingTitle}>Verify Your Email</Text>
+            <Text style={styles.headingSubhead}>
+              We sent a 6-digit code to{'\n'}
+              <Text style={styles.emailHighlight}>{email}</Text>
+            </Text>
           </View>
 
-          {error ? <Text style={styles.formError}>{error}</Text> : null}
-
-          <TouchableOpacity
-            style={styles.resendRow}
-            onPress={handleResend}
-            disabled={cooldown > 0}
-          >
-            <Text style={styles.resendText}>
-              Didn&apos;t receive code?{' '}
-              <Text style={cooldown > 0 ? styles.resendMuted : styles.resendLink}>
-                {cooldown > 0 ? `Resend (${cooldown}s)` : 'Resend'}
-              </Text>
+          {/* Form Card */}
+          <View style={styles.card}>
+            <Text style={styles.noticeText}>
+              Verification is required before you can log in or access NestMate features.
             </Text>
-          </TouchableOpacity>
 
-          <View style={styles.form}>
-            <AppButton title="Verify" onPress={handleVerify} loading={loading} />
+            <View style={styles.codeContainer}>
+              <CodeInput key={resetKey} length={CODE_LENGTH} onChange={setCode} />
+            </View>
+
+            {error ? <Text style={styles.inlineError}>{error}</Text> : null}
+
+            <View style={styles.actionRow}>
+              <AppButton
+                title="Verify email"
+                onPress={handleVerify}
+                loading={loading}
+                variant="primary"
+                size="lg"
+              />
+            </View>
+
+            <TouchableOpacity
+              style={styles.resendRow}
+              onPress={handleResend}
+              disabled={cooldown > 0}
+            >
+              <Text style={styles.resendText}>
+                Didn&apos;t receive code?{' '}
+                <Text style={cooldown > 0 ? styles.resendMuted : styles.resendLink}>
+                  {cooldown > 0 ? `Resend code (${cooldown}s)` : 'Resend code'}
+                </Text>
+              </Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
     backgroundColor: colors.background,
   },
@@ -140,40 +153,94 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    paddingHorizontal: space.lg,
+    paddingTop: space.xxl,
+    paddingBottom: space.xl,
+    justifyContent: 'center',
+  },
+  headerContainer: {
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xl,
+    marginBottom: space.xl,
   },
-  subtitle: {
-    fontSize: typography.body,
-    color: colors.textMuted,
+  logoBadge: {
+    width: 72,
+    height: 72,
+    borderRadius: radius.xl,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: space.lg,
+  },
+  logoImage: {
+    width: 48,
+    height: 48,
+  },
+  headingTitle: {
+    fontFamily: type.display.fontFamily,
+    fontSize: type.display.fontSize,
+    color: colors.ink,
     textAlign: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: space.xs,
   },
-  codeRow: {
-    marginBottom: spacing.lg,
+  headingSubhead: {
+    fontFamily: type.body.fontFamily,
+    fontSize: type.body.fontSize,
+    color: colors.inkMuted,
+    textAlign: 'center',
+    lineHeight: 22,
   },
-  formError: {
-    color: colors.error,
-    fontSize: typography.caption,
-    marginBottom: spacing.md,
+  emailHighlight: {
+    fontFamily: type.bodyStrong.fontFamily,
+    color: colors.ink,
+    fontWeight: '600',
+  },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: space.xl,
+    ...elevation.card,
+    marginBottom: space.xl,
+    alignItems: 'center',
+  },
+  noticeText: {
+    fontFamily: type.caption.fontFamily,
+    fontSize: 13,
+    color: colors.inkMuted,
+    textAlign: 'center',
+    marginBottom: space.lg,
+    lineHeight: 18,
+  },
+  codeContainer: {
+    marginBottom: space.lg,
+    width: '100%',
+    alignItems: 'center',
+  },
+  inlineError: {
+    fontFamily: type.caption.fontFamily,
+    fontSize: 13,
+    color: colors.danger,
+    textAlign: 'center',
+    marginBottom: space.md,
+  },
+  actionRow: {
+    width: '100%',
+    marginTop: space.xs,
+    marginBottom: space.lg,
   },
   resendRow: {
-    marginBottom: spacing.xl,
+    alignItems: 'center',
   },
   resendText: {
-    fontSize: typography.caption,
-    color: colors.textMuted,
+    fontFamily: type.caption.fontFamily,
+    fontSize: 13,
+    color: colors.inkMuted,
   },
   resendMuted: {
-    color: colors.textMuted,
-    fontWeight: typography.weightMedium,
+    color: colors.inkFaint,
   },
   resendLink: {
+    fontFamily: type.bodyStrong.fontFamily,
     color: colors.primary,
-    fontWeight: typography.weightBold,
-  },
-  form: {
-    width: '100%',
+    fontWeight: '600',
   },
 });

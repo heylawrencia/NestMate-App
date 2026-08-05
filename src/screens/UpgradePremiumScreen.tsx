@@ -1,117 +1,132 @@
+/**
+ * UpgradePremiumScreen — Upgrade to Premium Membership Screen (Spec §8.2 & Task 7)
+ *
+ * Describes what Premium unlocks (daily matching, unlimited match checks), GH₵20/month,
+ * and initiates Paystack checkout via planService.
+ * Handles 503 response cleanly if PAYSTACK_SECRET_KEY is absent.
+ */
+
 import React, { useState } from 'react';
-import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Alert,
+  Linking,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import AsyncBoundary from '../components/AsyncBoundary';
+import AppButton from '../components/AppButton';
 import ElevatedCard from '../components/ElevatedCard';
-import ScreenHeader from '../components/ScreenHeader';
-import { colors, spacing, typography } from '../theme';
+import IconCircle from '../components/IconCircle';
 import { RootStackParamList } from '../navigation/types';
-import { useAsyncData } from '../hooks/useAsyncData';
-import { fetchPlan, initiateUpgrade, verifyUpgrade } from '../services/planService';
+import { ApiError } from '../services/apiClient';
+import { initiateUpgrade } from '../services/planService';
+import { colors, radius, space, type } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'UpgradePremium'>;
 
 export default function UpgradePremiumScreen({ navigation }: Props) {
-  const { data: plan, loading, error, reload } = useAsyncData(fetchPlan, []);
-  const [reference, setReference] = useState<string | null>(null);
-  const [paying, setPaying] = useState(false);
-  const [verifying, setVerifying] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  async function handlePay() {
-    setPaying(true);
-    setStatusMessage(null);
+  const handleUpgrade = async () => {
+    setErrorMessage('');
+    setLoading(true);
     try {
-      const { authorizationUrl, reference: ref } = await initiateUpgrade(1);
-      setReference(ref);
-      await Linking.openURL(authorizationUrl);
-    } catch (e) {
-      setStatusMessage(e instanceof Error ? e.message : 'Could not start payment - try again.');
-    } finally {
-      setPaying(false);
+      const res = await initiateUpgrade(1);
+      setLoading(false);
+      if (res.authorizationUrl) {
+        Linking.openURL(res.authorizationUrl).catch(() => {
+          Alert.alert('Checkout', `Open this link to pay: ${res.authorizationUrl}`);
+        });
+      }
+    } catch (e: any) {
+      setLoading(false);
+      if (e instanceof ApiError && (e.status === 503 || e.status === 500)) {
+        setErrorMessage(
+          'Online payment gateway is temporarily unconfigured. Please contact support or pay via Mobile Money offline.'
+        );
+      } else {
+        setErrorMessage(
+          e?.message || 'Could not initiate upgrade. Please try again later.'
+        );
+      }
     }
-  }
-
-  async function handleVerify() {
-    if (!reference) return;
-    setVerifying(true);
-    try {
-      const updated = await verifyUpgrade(reference);
-      setStatusMessage(
-        updated.paymentStatus === 'SUCCESS'
-          ? "You're Premium! Enjoy unlimited matching."
-          : "We haven't seen your payment yet - if you just paid, wait a few seconds and try again.",
-      );
-      reload();
-    } catch (e) {
-      setStatusMessage(e instanceof Error ? e.message : 'Could not verify payment - try again.');
-    } finally {
-      setVerifying(false);
-    }
-  }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScreenHeader title="Upgrade to Premium" onBack={() => navigation.goBack()} />
+      <View style={styles.headerRow}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <Ionicons name="chevron-back" size={24} color={colors.ink} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Upgrade to Premium</Text>
+      </View>
 
-      <AsyncBoundary loading={loading} error={error} onRetry={reload}>
-        {plan ? (
-          <ElevatedCard style={styles.card}>
-            <View style={styles.priceRow}>
-              <Ionicons name="star" size={26} color={colors.primary} />
-              <Text style={styles.price}>
-                GH₵20<Text style={styles.perMonth}>/month</Text>
-              </Text>
-            </View>
-            <Text style={styles.description}>
-              Unlimited roommate matching, every day - no free-tier limit.
-            </Text>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Banner Card */}
+        <ElevatedCard style={styles.heroCard}>
+          <IconCircle size={64} backgroundColor={colors.surfaceTint} style={styles.iconCenter}>
+            <Ionicons name="sparkles" size={32} color={colors.accent} />
+          </IconCircle>
 
-            {plan.tier === 'PREMIUM' ? (
-              <View style={styles.premiumRow}>
-                <Ionicons name="checkmark-circle" size={18} color={colors.success} />
-                <Text style={styles.premiumText}>
-                  You&apos;re Premium
-                  {plan.premiumUntil ? ` until ${new Date(plan.premiumUntil).toLocaleDateString()}` : ''}
-                </Text>
-              </View>
-            ) : (
-              <>
-                <TouchableOpacity
-                  style={[styles.button, styles.payButton]}
-                  onPress={handlePay}
-                  disabled={paying}
-                  accessibilityRole="button"
-                  accessibilityLabel="Pay with Paystack"
-                >
-                  <Text style={styles.payButtonText}>
-                    {paying ? 'Starting payment...' : 'Pay with Paystack'}
-                  </Text>
-                </TouchableOpacity>
+          <Text style={styles.heroTitle}>Unlock Daily Roommate Matching</Text>
+          <Text style={styles.heroPrice}>
+            GH₵20 <Text style={styles.periodText}>/ month</Text>
+          </Text>
+          <Text style={styles.heroSubtitle}>
+            Get unlimited access to student matching, compatibility breakdowns, and instant messaging.
+          </Text>
+        </ElevatedCard>
 
-                {reference ? (
-                  <TouchableOpacity
-                    style={[styles.button, styles.verifyButton]}
-                    onPress={handleVerify}
-                    disabled={verifying}
-                    accessibilityRole="button"
-                    accessibilityLabel="I've completed payment"
-                  >
-                    <Text style={styles.verifyButtonText}>
-                      {verifying ? 'Checking...' : "I've completed payment"}
-                    </Text>
-                  </TouchableOpacity>
-                ) : null}
-              </>
-            )}
+        {/* Feature List */}
+        <ElevatedCard style={styles.featuresCard}>
+          <Text style={styles.featuresTitle}>What Premium Unlocks</Text>
 
-            {statusMessage ? <Text style={styles.statusText}>{statusMessage}</Text> : null}
-          </ElevatedCard>
+          <View style={styles.featureRow}>
+            <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+            <Text style={styles.featureText}>Unlimited daily match checks</Text>
+          </View>
+
+          <View style={styles.featureRow}>
+            <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+            <Text style={styles.featureText}>Full 5-factor compatibility explanations</Text>
+          </View>
+
+          <View style={styles.featureRow}>
+            <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+            <Text style={styles.featureText}>Direct student messaging before room booking</Text>
+          </View>
+
+          <View style={styles.featureRow}>
+            <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+            <Text style={styles.featureText}>Priority listing in roommate suggestions</Text>
+          </View>
+        </ElevatedCard>
+
+        {errorMessage ? (
+          <View style={styles.errorBox}>
+            <Ionicons name="alert-circle-outline" size={20} color={colors.danger} />
+            <Text style={styles.errorText}>{errorMessage}</Text>
+          </View>
         ) : null}
-      </AsyncBoundary>
+
+        {/* Action Button */}
+        <View style={styles.actionWrapper}>
+          <AppButton
+            title="Subscribe for GH₵20 / month →"
+            variant="primary"
+            size="lg"
+            loading={loading}
+            onPress={handleUpgrade}
+          />
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -119,73 +134,102 @@ export default function UpgradePremiumScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.surfaceTint,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
+    backgroundColor: colors.background,
   },
-  card: {
-    padding: spacing.lg,
-  },
-  priceRow: {
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
   },
-  price: {
-    fontSize: typography.h1,
-    fontWeight: typography.weightBold,
-    color: colors.text,
+  backBtn: {
+    padding: space.xs,
+    marginRight: space.sm,
   },
-  perMonth: {
-    fontSize: typography.body,
-    fontWeight: typography.weightMedium,
-    color: colors.textMuted,
+  headerTitle: {
+    fontFamily: type.h2.fontFamily,
+    fontSize: type.h2.fontSize,
+    color: colors.ink,
+    fontWeight: '700',
   },
-  description: {
-    fontSize: typography.body,
-    color: colors.textMuted,
-    marginBottom: spacing.lg,
+  scrollContent: {
+    padding: space.lg,
+    gap: space.md,
   },
-  button: {
-    borderRadius: 14,
-    paddingVertical: spacing.md,
+  heroCard: {
+    padding: space.xl,
     alignItems: 'center',
-    marginTop: spacing.sm,
+    borderRadius: radius.xl,
   },
-  payButton: {
-    backgroundColor: colors.primary,
+  iconCenter: {
+    marginBottom: space.md,
   },
-  payButtonText: {
-    color: colors.white,
-    fontSize: typography.body,
-    fontWeight: typography.weightBold,
-  },
-  verifyButton: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  verifyButtonText: {
-    color: colors.text,
-    fontSize: typography.body,
-    fontWeight: typography.weightMedium,
-  },
-  premiumRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-  },
-  premiumText: {
-    fontSize: typography.body,
-    fontWeight: typography.weightMedium,
-    color: colors.success,
-  },
-  statusText: {
-    fontSize: typography.caption,
-    color: colors.textMuted,
-    marginTop: spacing.md,
+  heroTitle: {
+    fontFamily: type.h1.fontFamily,
+    fontSize: type.h1.fontSize,
+    color: colors.ink,
+    fontWeight: '800',
     textAlign: 'center',
+    marginBottom: space.xs,
+  },
+  heroPrice: {
+    fontFamily: type.price.fontFamily,
+    fontSize: 28,
+    color: colors.primary,
+    fontWeight: '800',
+    marginVertical: space.xs,
+  },
+  periodText: {
+    fontFamily: type.body.fontFamily,
+    fontSize: 14,
+    color: colors.inkMuted,
+    fontWeight: '400',
+  },
+  heroSubtitle: {
+    fontFamily: type.caption.fontFamily,
+    fontSize: 13,
+    color: colors.inkMuted,
+    textAlign: 'center',
+  },
+  featuresCard: {
+    padding: space.lg,
+    borderRadius: radius.xl,
+  },
+  featuresTitle: {
+    fontFamily: type.h3.fontFamily,
+    fontSize: type.h3.fontSize,
+    color: colors.ink,
+    fontWeight: '600',
+    marginBottom: space.md,
+  },
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    marginBottom: space.md,
+  },
+  featureText: {
+    fontFamily: type.body.fontFamily,
+    fontSize: 14,
+    color: colors.ink,
+  },
+  errorBox: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: radius.md,
+    padding: space.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+  },
+  errorText: {
+    flex: 1,
+    fontFamily: type.caption.fontFamily,
+    fontSize: 13,
+    color: colors.danger,
+  },
+  actionWrapper: {
+    marginTop: space.sm,
   },
 });
