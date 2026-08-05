@@ -16,10 +16,12 @@ import { useAuth } from '../context/AuthContext';
 type Props = NativeStackScreenProps<RootStackParamList, 'Splash'>;
 
 const SPLASH_DURATION_MS = 1400;
+const MAX_SPLASH_WAIT_MS = 2500;
 
 export default function SplashScreen({ navigation }: Props) {
   const progress = useRef(new Animated.Value(0)).current;
   const { token, isLoading, email } = useAuth();
+  const navigated = useRef(false);
 
   useEffect(() => {
     Animated.timing(progress, {
@@ -30,17 +32,25 @@ export default function SplashScreen({ navigation }: Props) {
   }, [progress]);
 
   useEffect(() => {
-    if (isLoading) return;
-
-    const timer = setTimeout(() => {
+    const doNavigate = () => {
+      if (navigated.current) return;
+      navigated.current = true;
       if (token) {
         navigation.replace('Home', { email: email || '' });
       } else {
         navigation.replace('GetStarted');
       }
-    }, SPLASH_DURATION_MS);
+    };
 
-    return () => clearTimeout(timer);
+    // If session restoration finished, navigate after splash duration
+    if (!isLoading) {
+      const timer = setTimeout(doNavigate, SPLASH_DURATION_MS);
+      return () => clearTimeout(timer);
+    }
+
+    // Safety fallback: Force navigation after 2.5 seconds max even if AuthContext is still loading
+    const fallbackTimer = setTimeout(doNavigate, MAX_SPLASH_WAIT_MS);
+    return () => clearTimeout(fallbackTimer);
   }, [navigation, isLoading, token, email]);
 
   const progressWidth = progress.interpolate({
