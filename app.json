@@ -3,6 +3,7 @@
     "name": "NestMate",
     "slug": "nestmate",
     "version": "2.0.0",
+    "newArchEnabled": false,
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
