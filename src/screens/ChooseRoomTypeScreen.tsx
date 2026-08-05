@@ -29,6 +29,8 @@ import { fetchHostelById } from '../services/hostelService';
 import { colors, elevation, radius, space, type } from '../theme';
 import { RoomType } from '../types/hostel';
 
+import { saveMyProfile } from '../services/profileService';
+
 type Props = CompositeScreenProps<
   NativeStackScreenProps<HostelsStackParamList, 'ChooseRoomType'>,
   NativeStackScreenProps<RootStackParamList>
