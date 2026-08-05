@@ -13,7 +13,8 @@
     },
     "android": {
       "package": "com.nestmate.app",
-      "versionCode": 200,
+      "versionCode": 201,
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
