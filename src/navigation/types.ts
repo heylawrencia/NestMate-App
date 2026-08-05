@@ -107,6 +107,8 @@ export type RootStackParamList = {
   UpgradePremium: undefined;
   InterestPicker: undefined;
   HostelDetail: { hostelId: string };
+  ChooseRoomType: { hostelId: string };
+  PickRoom: { hostelId: string; roomTypeId: string };
   AccessCode: { hostelId: string; roomTypeId?: string };
   CodeVerified: { hostelId: string; code: string; roomTypeId?: string };
   HoldPending: { hostelId?: string; roomTypeId?: string };

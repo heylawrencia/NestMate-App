@@ -40,6 +40,8 @@ import IndividualChatScreen from '../screens/IndividualChatScreen';
 import GroupChatScreen from '../screens/GroupChatScreen';
 import UpgradePremiumScreen from '../screens/UpgradePremiumScreen';
 import HostelDetailScreen from '../screens/HostelDetailScreen';
+import ChooseRoomTypeScreen from '../screens/ChooseRoomTypeScreen';
+import PickRoomScreen from '../screens/PickRoomScreen';
 import AccessCodeScreen from '../screens/AccessCodeScreen';
 import HoldPendingScreen from '../screens/HoldPendingScreen';
 import CodeVerifiedScreen from '../screens/CodeVerifiedScreen';
@@ -87,6 +89,8 @@ export default function RootNavigator() {
       <Stack.Screen name="GroupChat" component={GroupChatScreen} />
       <Stack.Screen name="UpgradePremium" component={UpgradePremiumScreen} />
       <Stack.Screen name="HostelDetail" component={HostelDetailScreen as any} />
+      <Stack.Screen name="ChooseRoomType" component={ChooseRoomTypeScreen as any} />
+      <Stack.Screen name="PickRoom" component={PickRoomScreen as any} />
       <Stack.Screen name="AccessCode" component={AccessCodeScreen as any} />
       <Stack.Screen name="HoldPending" component={HoldPendingScreen as any} />
       <Stack.Screen name="CodeVerified" component={CodeVerifiedScreen as any} />
